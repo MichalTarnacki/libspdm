@@ -135,6 +135,7 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
     size_t backup_decoded_message_size;
     bool result;
     bool reset_key_update;
+    bool oversized_chunk_send;
 
     context = spdm_context;
     size_t transport_header_size;
@@ -251,12 +252,24 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
             LIBSPDM_KEY_UPDATE_ACTION_REQUESTER);
     }
 
-    /*
-     * decoded_message may contain padding zeros due to transport layer alignment requirements.
-     * trim the decoded_message size to the maximum data_transfer_size.
-     */
-    decoded_message_size = LIBSPDM_MIN(decoded_message_size,
-                                       context->local_context.capability.data_transfer_size);
+    /* Preserve a CHUNK_SEND that exceeds DataTransferSize by more than the
+     * transport's allowed alignment padding. Its handler must observe the real
+     * size and return EarlyErrorDetected with InvalidRequest. */
+    oversized_chunk_send = message_session_id == NULL && !(*is_app_message) &&
+        decoded_message_size > context->local_context.capability.data_transfer_size &&
+        decoded_message_size - context->local_context.capability.data_transfer_size >=
+            sizeof(uint32_t) &&
+        decoded_message_size <=
+            libspdm_get_scratch_buffer_last_spdm_request_capacity(context) &&
+        decoded_message_size >= sizeof(spdm_message_header_t) &&
+        ((spdm_message_header_t *)decoded_message_ptr)->request_response_code ==
+            SPDM_CHUNK_SEND;
+    if (!oversized_chunk_send) {
+        /* Decoded messages may contain transport alignment padding. */
+        decoded_message_size = LIBSPDM_MIN(
+            decoded_message_size,
+            context->local_context.capability.data_transfer_size);
+    }
 
     context->last_spdm_request_size = decoded_message_size;
     libspdm_copy_mem (context->last_spdm_request,

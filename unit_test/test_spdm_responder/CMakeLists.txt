@@ -95,6 +95,7 @@ if((TOOLCHAIN STREQUAL "KLEE") OR (TOOLCHAIN STREQUAL "CBMC"))
             $<TARGET_OBJECTS:spdm_secured_message_lib>
             $<TARGET_OBJECTS:spdm_device_secret_lib_${DEVICE}>
             $<TARGET_OBJECTS:spdm_transport_test_lib>
+            $<TARGET_OBJECTS:spdm_transport_pcidoe_lib>
             $<TARGET_OBJECTS:cmockalib>
             $<TARGET_OBJECTS:platform_lib>
     )
@@ -115,6 +116,7 @@ else()
             spdm_secured_message_lib
             spdm_device_secret_lib_${DEVICE}
             spdm_transport_test_lib
+            spdm_transport_pcidoe_lib
             cmockalib
             platform_lib
     )
