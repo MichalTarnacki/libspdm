@@ -33,6 +33,9 @@ typedef libspdm_return_t (*libspdm_get_spdm_response_func)(
     libspdm_context_t *spdm_context, size_t request_size, const void *request,
     size_t *response_size, void *response);
 
+uint32_t libspdm_get_responder_receive_data_transfer_size(
+    libspdm_context_t *spdm_context);
+
 /**
  * Build the response when the response state is incorrect.
  *

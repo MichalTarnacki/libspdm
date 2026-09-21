@@ -11,6 +11,24 @@
 #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
 
 #define CHUNK_GET_UNIT_TEST_OVERRIDE_DATA_TRANSFER_SIZE (64)
+#define CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE (64)
+
+static libspdm_return_t libspdm_test_pci_doe_decode_truncated_plain(
+    void *spdm_context, uint32_t **session_id, bool *is_app_message,
+    bool is_request_message, size_t transport_message_size,
+    void *transport_message, size_t *message_size, void **message)
+{
+    libspdm_return_t status;
+
+    status = libspdm_transport_pci_doe_decode_message(
+        spdm_context, session_id, is_app_message, is_request_message,
+        transport_message_size, transport_message, message_size, message);
+    if (!LIBSPDM_STATUS_IS_ERROR(status) && *session_id == NULL &&
+        *message_size > CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE) {
+        *message_size = CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE;
+    }
+    return status;
+}
 
 typedef struct {
     spdm_message_header_t header;
@@ -2125,14 +2143,16 @@ static void libspdm_test_responder_receive_send_rsp_case22(void** state)
 }
 
 /**
- * Test 24: A plaintext PCI DOE CHUNK_SEND that exceeds DataTransferSize by one
- * DWORD must reach the chunk handler without being mistaken for alignment
- * padding. The handler returns EarlyErrorDetected with InvalidRequest.
+ * Test 24: A plaintext PCI DOE CHUNK_SEND that exceeds the registered receiver
+ * capacity by one trailing DWORD must be rejected even if the decoder reports
+ * only the logical limit and the runtime capability is larger. The handler
+ * returns EarlyErrorDetected with InvalidRequest.
  **/
 static void libspdm_test_responder_receive_send_rsp_case24(void **state)
 {
     enum {
-        data_transfer_size = 64,
+        data_transfer_size = CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE,
+        local_data_transfer_size = data_transfer_size + 8,
         spdm_request_size = data_transfer_size + sizeof(uint32_t),
         transport_request_size = sizeof(pci_doe_data_object_header_t) + spdm_request_size
     };
@@ -2163,7 +2183,7 @@ static void libspdm_test_responder_receive_send_rsp_case24(void **state)
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHUNK_CAP;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_CHUNK_CAP;
-    spdm_context->local_context.capability.data_transfer_size = data_transfer_size;
+    spdm_context->local_context.capability.data_transfer_size = local_data_transfer_size;
     spdm_context->local_context.capability.max_spdm_msg_size = 256;
     spdm_context->connection_info.capability.data_transfer_size = data_transfer_size;
     spdm_context->connection_info.capability.max_spdm_msg_size = 256;
@@ -2173,7 +2193,10 @@ static void libspdm_test_responder_receive_send_rsp_case24(void **state)
         LIBSPDM_PCI_DOE_TRANSPORT_HEADER_SIZE,
         LIBSPDM_PCI_DOE_TRANSPORT_TAIL_SIZE,
         libspdm_transport_pci_doe_encode_message,
-        libspdm_transport_pci_doe_decode_message);
+        libspdm_test_pci_doe_decode_truncated_plain);
+    spdm_context->receiver_buffer_size =
+        data_transfer_size + LIBSPDM_PCI_DOE_TRANSPORT_HEADER_SIZE +
+        LIBSPDM_PCI_DOE_TRANSPORT_TAIL_SIZE;
 
     libspdm_zero_mem(request, sizeof(request));
     doe_header = (pci_doe_data_object_header_t *)request;
@@ -2185,7 +2208,7 @@ static void libspdm_test_responder_receive_send_rsp_case24(void **state)
     chunk_send->header.request_response_code = SPDM_CHUNK_SEND;
     chunk_send->header.param2 = 1;
     chunk_send->chunk_seq_no = 0;
-    chunk_send->chunk_size = spdm_request_size - sizeof(*chunk_send) - sizeof(uint32_t);
+    chunk_send->chunk_size = data_transfer_size - sizeof(*chunk_send) - sizeof(uint32_t);
     large_message = (uint8_t *)(chunk_send + 1);
     libspdm_write_uint32(large_message, 128);
     large_message[sizeof(uint32_t)] = SPDM_MESSAGE_VERSION_14;
