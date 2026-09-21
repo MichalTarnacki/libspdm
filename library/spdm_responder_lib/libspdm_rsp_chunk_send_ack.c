@@ -30,8 +30,12 @@ libspdm_return_t libspdm_get_response_chunk_send(libspdm_context_t *spdm_context
     size_t chunk_response_size;
     uint64_t max_chunk_data_transfer_size;
     uint32_t chunk_seq_no;
+    uint32_t receive_data_transfer_size;
 
     spdm_request = (const spdm_chunk_send_request_t*) request;
+
+    receive_data_transfer_size =
+        libspdm_get_responder_receive_data_transfer_size(spdm_context);
 
     if (libspdm_get_connection_version(spdm_context) < SPDM_MESSAGE_VERSION_12) {
         return libspdm_generate_error_response(spdm_context,
@@ -118,7 +122,7 @@ libspdm_return_t libspdm_get_response_chunk_send(libspdm_context_t *spdm_context
 
         if (libspdm_get_connection_version(spdm_context) < SPDM_MESSAGE_VERSION_14) {
             max_chunk_data_transfer_size =
-                ((size_t) spdm_context->local_context.capability.data_transfer_size
+                ((size_t) receive_data_transfer_size
                  - sizeof(spdm_chunk_send_request_t)) * 65536 - sizeof(uint32_t);
         } else {
             /* chunk seq no wrap not considered in spdm 1.4+ */
@@ -131,7 +135,7 @@ libspdm_return_t libspdm_get_response_chunk_send(libspdm_context_t *spdm_context
                 - sizeof(spdm_chunk_send_request_t)
                 - sizeof(uint32_t))
             || spdm_request->chunk_size > calc_max_chunk_size
-            || (uint32_t)request_size > spdm_context->local_context.capability.data_transfer_size
+            || (uint32_t)request_size > receive_data_transfer_size
             || large_message_size > spdm_context->local_context.capability.max_spdm_msg_size
             || large_message_size > max_chunk_data_transfer_size
             || large_message_size <= SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12
@@ -182,7 +186,7 @@ libspdm_return_t libspdm_get_response_chunk_send(libspdm_context_t *spdm_context
                            < SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12
                            - sizeof(spdm_chunk_send_request_t))
                        || ((uint32_t) request_size
-                           > spdm_context->local_context.capability.data_transfer_size))) {
+                           > receive_data_transfer_size))) {
             status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         } else if (chunk_seq_no == 0) {
             /* Chunk seq no wrapped */

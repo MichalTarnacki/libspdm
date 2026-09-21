@@ -104,6 +104,31 @@ libspdm_get_spdm_response_func libspdm_get_response_func_via_request_code(uint8_
     }
 }
 
+uint32_t libspdm_get_responder_receive_data_transfer_size(
+    libspdm_context_t *spdm_context)
+{
+    uint32_t receive_data_transfer_size;
+    size_t transport_overhead;
+
+    receive_data_transfer_size =
+        spdm_context->local_context.capability.data_transfer_size;
+    if (spdm_context->receiver_buffer_size == 0) {
+        return receive_data_transfer_size;
+    }
+
+    transport_overhead =
+        spdm_context->local_context.capability.transport_header_size +
+        spdm_context->local_context.capability.transport_tail_size;
+    LIBSPDM_ASSERT(spdm_context->receiver_buffer_size >= transport_overhead);
+    if (spdm_context->receiver_buffer_size < transport_overhead) {
+        return 0;
+    }
+
+    return LIBSPDM_MIN(
+        receive_data_transfer_size,
+        (uint32_t)(spdm_context->receiver_buffer_size - transport_overhead));
+}
+
 /**
  * Return the GET_SPDM_RESPONSE function via last request.
  *
@@ -135,6 +160,11 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
     size_t backup_decoded_message_size;
     bool result;
     bool reset_key_update;
+    bool oversized_chunk_send;
+    uint32_t receive_data_transfer_size;
+    size_t raw_decoded_message_size;
+    uintptr_t request_address;
+    uintptr_t decoded_message_address;
 
     context = spdm_context;
     size_t transport_header_size;
@@ -251,12 +281,37 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
             LIBSPDM_KEY_UPDATE_ACTION_REQUESTER);
     }
 
-    /*
-     * decoded_message may contain padding zeros due to transport layer alignment requirements.
-     * trim the decoded_message size to the maximum data_transfer_size.
-     */
-    decoded_message_size = LIBSPDM_MIN(decoded_message_size,
-                                       context->local_context.capability.data_transfer_size);
+    receive_data_transfer_size =
+        libspdm_get_responder_receive_data_transfer_size(context);
+    raw_decoded_message_size = decoded_message_size;
+    request_address = (uintptr_t)request;
+    decoded_message_address = (uintptr_t)decoded_message_ptr;
+    if (message_session_id == NULL && !(*is_app_message) &&
+        decoded_message_address >= request_address &&
+        decoded_message_address - request_address <= request_size) {
+        raw_decoded_message_size =
+            request_size - (decoded_message_address - request_address);
+    }
+
+    /* A plaintext decoder may report only the logical receive limit even when
+     * the raw transport frame contains an oversized CHUNK_SEND. Preserve its
+     * actual span so the handler can return EarlyErrorDetected/InvalidRequest. */
+    oversized_chunk_send = message_session_id == NULL && !(*is_app_message) &&
+        raw_decoded_message_size > receive_data_transfer_size &&
+        raw_decoded_message_size - receive_data_transfer_size >=
+            sizeof(uint32_t) &&
+        raw_decoded_message_size <=
+            libspdm_get_scratch_buffer_last_spdm_request_capacity(context) &&
+        raw_decoded_message_size >= sizeof(spdm_message_header_t) &&
+        ((spdm_message_header_t *)decoded_message_ptr)->request_response_code ==
+            SPDM_CHUNK_SEND;
+    if (oversized_chunk_send) {
+        decoded_message_size = raw_decoded_message_size;
+    } else {
+        /* Decoded messages may contain transport alignment padding. */
+        decoded_message_size = LIBSPDM_MIN(
+            decoded_message_size, receive_data_transfer_size);
+    }
 
     context->last_spdm_request_size = decoded_message_size;
     libspdm_copy_mem (context->last_spdm_request,
