@@ -6,10 +6,91 @@
 
 #include "spdm_unit_test.h"
 #include "internal/libspdm_responder_lib.h"
+#include "library/spdm_transport_pcidoe_lib.h"
 
 #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
 
 #define CHUNK_GET_UNIT_TEST_OVERRIDE_DATA_TRANSFER_SIZE (64)
+#define CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE (64)
+
+/* Passes a plaintext PCI DOE CHUNK_SEND (ChunkSeqNo 0) of spdm_request_size bytes to
+ * libspdm_process_request. */
+static libspdm_return_t libspdm_test_process_doe_chunk_send(
+    libspdm_context_t *spdm_context, uint32_t data_transfer_size, size_t spdm_request_size)
+{
+    uint8_t request[sizeof(pci_doe_data_object_header_t) +
+                    CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE + sizeof(uint32_t)];
+    size_t transport_request_size;
+    pci_doe_data_object_header_t *doe_header;
+    spdm_chunk_send_request_14_t *chunk_send;
+    uint8_t *large_message;
+    uint32_t *session_id;
+    bool is_app_message;
+
+    transport_request_size = sizeof(pci_doe_data_object_header_t) +
+                             ((spdm_request_size + 3) & ~(size_t)3);
+    assert_true(transport_request_size <= sizeof(request));
+
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_14 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state =
+        LIBSPDM_CONNECTION_STATE_NEGOTIATED;
+    spdm_context->local_context.capability.flags |=
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHUNK_CAP;
+    spdm_context->connection_info.capability.flags |=
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_CHUNK_CAP;
+    libspdm_register_transport_layer_func(
+        spdm_context, LIBSPDM_MAX_SPDM_MSG_SIZE,
+        LIBSPDM_PCI_DOE_TRANSPORT_HEADER_SIZE,
+        LIBSPDM_PCI_DOE_TRANSPORT_TAIL_SIZE,
+        libspdm_transport_pci_doe_encode_message,
+        libspdm_transport_pci_doe_decode_message);
+    spdm_context->local_context.capability.data_transfer_size = data_transfer_size;
+    spdm_context->local_context.capability.max_spdm_msg_size = 256;
+    spdm_context->connection_info.capability.data_transfer_size =
+        CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE;
+    spdm_context->connection_info.capability.max_spdm_msg_size = 256;
+
+    libspdm_zero_mem(request, sizeof(request));
+    doe_header = (pci_doe_data_object_header_t *)request;
+    doe_header->vendor_id = PCI_DOE_VENDOR_ID_PCISIG;
+    doe_header->data_object_type = PCI_DOE_DATA_OBJECT_TYPE_SPDM;
+    doe_header->length = (uint32_t)(transport_request_size / sizeof(uint32_t));
+    chunk_send = (spdm_chunk_send_request_14_t *)(doe_header + 1);
+    chunk_send->header.spdm_version = SPDM_MESSAGE_VERSION_14;
+    chunk_send->header.request_response_code = SPDM_CHUNK_SEND;
+    chunk_send->header.param2 = 1;
+    chunk_send->chunk_seq_no = 0;
+    chunk_send->chunk_size = data_transfer_size - sizeof(*chunk_send) - sizeof(uint32_t);
+    large_message = (uint8_t *)(chunk_send + 1);
+    libspdm_write_uint32(large_message, 128);
+    large_message[sizeof(uint32_t)] = SPDM_MESSAGE_VERSION_14;
+    large_message[sizeof(uint32_t) + 1] = SPDM_SET_CERTIFICATE;
+
+    session_id = NULL;
+    is_app_message = false;
+    return libspdm_process_request(spdm_context, &session_id, &is_app_message,
+                                   transport_request_size, request);
+}
+
+/* Builds the response to the processed plaintext request. The caller must release
+ * the sender buffer. */
+static void *libspdm_test_build_doe_response(libspdm_context_t *spdm_context)
+{
+    libspdm_return_t status;
+    void *message;
+    void *response;
+    size_t message_size;
+
+    libspdm_acquire_sender_buffer(spdm_context, &message_size, &message);
+    libspdm_zero_mem(message, message_size);
+    response = message;
+    status = libspdm_build_response(spdm_context, NULL, false,
+                                    &message_size, &response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    return (uint8_t *)message + spdm_context->local_context.capability.transport_header_size;
+}
 
 typedef struct {
     spdm_message_header_t header;
@@ -91,6 +172,7 @@ static void libspdm_test_responder_receive_send_rsp_case1(void** state)
             m_libspdm_use_asym_algo, &data,
             &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 
@@ -383,6 +465,7 @@ static void libspdm_test_responder_receive_send_rsp_case4(void** state)
             m_libspdm_use_asym_algo, &data,
             &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 
@@ -817,6 +900,99 @@ static void libspdm_test_responder_receive_send_rsp_case8(void** state)
     libspdm_release_sender_buffer(spdm_context);
 }
 
+/**
+ * Test 24: During an active chunk GET transfer, a GET_VERSION request whose SPDMVersion is not 1.0
+ * is invalid, and an invalid GET_VERSION request that results in an ERROR shall not affect the
+ * connection state.
+ * Expected behavior: the Responder returns ERROR(VersionMismatch) and the chunk transfer sequence
+ * is not terminated.
+ **/
+static void libspdm_test_responder_receive_send_rsp_case24(void** state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t response_size;
+    uint8_t *response;
+    spdm_error_response_t *spdm_response;
+    spdm_get_version_request_t spdm_request;
+    void *message;
+    size_t message_size;
+    uint32_t transport_header_size;
+    void *scratch_buffer;
+    size_t scratch_buffer_size;
+    uint8_t *large_message;
+    size_t large_message_capacity;
+    size_t i;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 24;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_12 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state =
+        LIBSPDM_CONNECTION_STATE_NEGOTIATED;
+    spdm_context->local_context.capability.flags |=
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHUNK_CAP;
+    spdm_context->connection_info.capability.flags |=
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_CHUNK_CAP;
+    spdm_context->connection_info.capability.data_transfer_size =
+        LIBSPDM_DATA_TRANSFER_SIZE;
+    spdm_context->connection_info.capability.max_spdm_msg_size =
+        LIBSPDM_MAX_SPDM_MSG_SIZE;
+
+    /* Simulate an active chunk GET transfer. */
+    libspdm_get_scratch_buffer(spdm_context, &scratch_buffer, &scratch_buffer_size);
+    large_message = (uint8_t *)scratch_buffer +
+                    libspdm_get_scratch_buffer_large_message_offset(spdm_context);
+    large_message_capacity = libspdm_get_scratch_buffer_large_message_capacity(spdm_context);
+    libspdm_set_mem(large_message, large_message_capacity, 0xa5);
+
+    spdm_context->chunk_context.get.chunk_in_use = true;
+    spdm_context->chunk_context.get.chunk_handle = 1;
+    spdm_context->chunk_context.get.chunk_seq_no = 2;
+    spdm_context->chunk_context.get.large_message = large_message;
+    spdm_context->chunk_context.get.large_message_size = large_message_capacity;
+    spdm_context->chunk_context.get.large_message_capacity = large_message_capacity;
+
+    /* {ERROR} GET_VERSION with an SPDMVersion other than 1.0. */
+    libspdm_zero_mem(&spdm_request, sizeof(spdm_request));
+    spdm_request.header.spdm_version = SPDM_MESSAGE_VERSION_12;
+    spdm_request.header.request_response_code = SPDM_GET_VERSION;
+
+    libspdm_copy_mem(spdm_context->last_spdm_request,
+                     libspdm_get_scratch_buffer_last_spdm_request_capacity(spdm_context),
+                     &spdm_request, sizeof(spdm_request));
+    spdm_context->last_spdm_request_size = sizeof(spdm_request);
+
+    libspdm_acquire_sender_buffer(spdm_context, &message_size, (void **)&message);
+    response = message;
+    response_size = message_size;
+    libspdm_zero_mem(response, response_size);
+
+    status = libspdm_build_response(spdm_context, NULL, false,
+                                    &response_size, (void **)&response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    transport_header_size =
+        spdm_context->local_context.capability.transport_header_size;
+    spdm_response = (spdm_error_response_t *)((uint8_t *)message + transport_header_size);
+
+    assert_int_equal(spdm_response->header.request_response_code, SPDM_ERROR);
+    assert_int_equal(spdm_response->header.param1, SPDM_ERROR_CODE_VERSION_MISMATCH);
+
+    /* Verify chunk transfer sequence is NOT terminated. */
+    assert_true(spdm_context->chunk_context.get.chunk_in_use);
+    assert_int_equal(spdm_context->chunk_context.get.chunk_handle, 1);
+    assert_int_equal(spdm_context->chunk_context.get.chunk_seq_no, 2);
+    assert_ptr_equal(spdm_context->chunk_context.get.large_message, large_message);
+    for (i = 0; i < large_message_capacity; i++) {
+        assert_int_equal(large_message[i], 0xa5);
+    }
+
+    libspdm_release_sender_buffer(spdm_context);
+}
+
 #if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP)
 
 /**
@@ -1161,10 +1337,10 @@ static void libspdm_test_responder_receive_send_rsp_case12(void **state)
     spdm_test_context->case_id = 12;
     set_basic_mut_auth_state(spdm_context);
 
-    /* Wrong request: GET_DIGESTS instead of GET_ENCAPSULATED_REQUEST. */
+    /* Wrong request: GET_CAPABILITIES instead of GET_ENCAPSULATED_REQUEST. */
     libspdm_zero_mem(&spdm_request, sizeof(spdm_request));
     spdm_request.spdm_version = SPDM_MESSAGE_VERSION_11;
-    spdm_request.request_response_code = SPDM_GET_DIGESTS;
+    spdm_request.request_response_code = SPDM_GET_CAPABILITIES;
     libspdm_copy_mem(spdm_context->last_spdm_request,
                      libspdm_get_scratch_buffer_last_spdm_request_capacity(spdm_context),
                      &spdm_request, sizeof(spdm_request));
@@ -1368,7 +1544,7 @@ static void libspdm_test_responder_receive_send_rsp_case14(void **state)
     size_t response_size;
     uint32_t transport_header_size;
     size_t index;
-    const uint8_t codes[] = {SPDM_GET_DIGESTS, SPDM_GET_ENCAPSULATED_REQUEST, SPDM_GET_VERSION};
+    const uint8_t codes[] = {SPDM_GET_CAPABILITIES, SPDM_GET_ENCAPSULATED_REQUEST, SPDM_GET_VERSION};
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -1411,7 +1587,7 @@ static void libspdm_test_responder_receive_send_rsp_case14(void **state)
         transport_header_size = spdm_context->local_context.capability.transport_header_size;
         spdm_response = (spdm_error_response_t *)((uint8_t *)message + transport_header_size);
 
-        if (codes[index] == SPDM_GET_DIGESTS) {
+        if (codes[index] == SPDM_GET_CAPABILITIES) {
             /* Unrelated request while the encapsulated request is outstanding. */
             assert_int_equal(spdm_response->header.request_response_code, SPDM_ERROR);
             assert_int_equal(spdm_response->header.param1, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT);
@@ -1477,7 +1653,7 @@ static void libspdm_test_responder_receive_send_rsp_case15(void **state)
         /* Bit 1: the flow has not issued a request, so only GET_ENCAPSULATED_REQUEST
          * advances it. */
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_ENCAP_REQUEST,
-          SPDM_GET_DIGESTS, 0, SPDM_ERROR_CODE_UNEXPECTED_REQUEST },
+          SPDM_GET_CAPABILITIES, 0, SPDM_ERROR_CODE_UNEXPECTED_REQUEST },
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_ENCAP_REQUEST,
           SPDM_DELIVER_ENCAPSULATED_RESPONSE, 0, SPDM_ERROR_CODE_UNEXPECTED_REQUEST },
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_ENCAP_REQUEST,
@@ -1490,7 +1666,7 @@ static void libspdm_test_responder_receive_send_rsp_case15(void **state)
           SPDM_DELIVER_ENCAPSULATED_RESPONSE, sizeof(spdm_message_header_t), 0 },
         /* Anything that does not advance the flow is rejected on that channel. */
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_ENCAP_REQUEST,
-          SPDM_GET_DIGESTS, sizeof(spdm_message_header_t), SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
+          SPDM_GET_CAPABILITIES, sizeof(spdm_message_header_t), SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
 
         /* Bit 2 embeds GET_DIGESTS in KEY_EXCHANGE_RSP, so the next non-session message is
          * DELIVER_ENCAPSULATED_RESPONSE rather than GET_ENCAPSULATED_REQUEST. */
@@ -1499,7 +1675,7 @@ static void libspdm_test_responder_receive_send_rsp_case15(void **state)
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS,
           SPDM_GET_ENCAPSULATED_REQUEST, 0, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS,
-          SPDM_GET_DIGESTS, 0, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
+          SPDM_GET_CAPABILITIES, 0, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
         { SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS,
           SPDM_GET_VERSION, 0, 0 },
     };
@@ -1605,7 +1781,7 @@ static void libspdm_test_responder_receive_send_rsp_case16(void **state)
         uint8_t expected_error;
     } cases[] = {
         /* Unrelated request while the encapsulated request is outstanding. */
-        { SPDM_GET_DIGESTS, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
+        { SPDM_GET_CAPABILITIES, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
         /* Within a session GET_VERSION does not release the Requester from the flow, which is
          * what distinguishes this from test 14. */
         { SPDM_GET_VERSION, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT },
@@ -2123,6 +2299,110 @@ static void libspdm_test_responder_receive_send_rsp_case22(void** state)
     libspdm_release_sender_buffer(spdm_context);
 }
 
+/**
+ * Test 25: the Requester sends a secured message whose session ID is 0.
+ * Expected behavior: libspdm_process_request() rejects the message as InvalidSession, the same
+ * as for any other session ID that does not belong to a session.
+ **/
+static void libspdm_test_responder_receive_send_rsp_case25(void** state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    uint32_t *session_id;
+    bool is_app_message;
+    uint8_t request[sizeof(libspdm_test_message_header_t) + 2 * sizeof(uint32_t)];
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 25;
+
+    /* The test transport header is followed by the session ID and 4 bytes of padding, since the
+     * payload must be longer than the session ID and a multiple of 4 bytes. */
+    libspdm_zero_mem(request, sizeof(request));
+    ((libspdm_test_message_header_t *)request)->message_type =
+        LIBSPDM_TEST_MESSAGE_TYPE_SECURED_TEST;
+
+    is_app_message = false;
+    session_id = NULL;
+    status = libspdm_process_request(spdm_context, &session_id, &is_app_message,
+                                     sizeof(request), request);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(spdm_context->last_spdm_error.error_code, SPDM_ERROR_CODE_INVALID_SESSION);
+}
+
+/**
+ * Test 26: A plaintext PCI DOE CHUNK_SEND that exceeds DataTransferSize by one
+ * trailing DWORD is not trimmed; it is answered with ERROR(InvalidRequest), not
+ * with CHUNK_SEND_ACK.
+ **/
+static void libspdm_test_responder_receive_send_rsp_case26(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    spdm_error_response_t *error_response;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 26;
+
+    status = libspdm_test_process_doe_chunk_send(
+        spdm_context, CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE,
+        CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE + sizeof(uint32_t));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(spdm_context->last_spdm_request_size,
+                     CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE + sizeof(uint32_t));
+    error_response = libspdm_test_build_doe_response(spdm_context);
+    assert_int_equal(error_response->header.request_response_code, SPDM_ERROR);
+    assert_int_equal(error_response->header.param1,
+                     SPDM_ERROR_CODE_INVALID_REQUEST);
+    assert_false(spdm_context->chunk_context.send.chunk_in_use);
+
+    libspdm_release_sender_buffer(spdm_context);
+}
+
+/**
+ * Test 27: With a DataTransferSize that is not DWORD aligned, 1 to 3 bytes of
+ * PCI DOE padding after a DataTransferSize-sized CHUNK_SEND are trimmed and the
+ * chunk is accepted.
+ **/
+static void libspdm_test_responder_receive_send_rsp_case27(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    spdm_chunk_send_ack_response_14_t *chunk_send_ack;
+    uint32_t data_transfer_size;
+    uint32_t padding;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 27;
+
+    for (padding = 1; padding <= 3; padding++) {
+        data_transfer_size = CHUNK_SEND_UNIT_TEST_DATA_TRANSFER_SIZE + 4 - padding;
+        libspdm_zero_mem(&spdm_context->chunk_context.send,
+                         sizeof(spdm_context->chunk_context.send));
+
+        status = libspdm_test_process_doe_chunk_send(
+            spdm_context, data_transfer_size, data_transfer_size);
+        assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+        assert_int_equal(spdm_context->last_spdm_request_size, data_transfer_size);
+        chunk_send_ack = libspdm_test_build_doe_response(spdm_context);
+        assert_int_equal(chunk_send_ack->header.request_response_code,
+                         SPDM_CHUNK_SEND_ACK);
+        assert_int_equal(chunk_send_ack->header.param1, 0);
+        assert_int_equal(chunk_send_ack->chunk_seq_no, 0);
+        assert_true(spdm_context->chunk_context.send.chunk_in_use);
+        assert_int_equal(spdm_context->chunk_context.send.chunk_bytes_transferred,
+                         data_transfer_size - sizeof(spdm_chunk_send_request_14_t) -
+                         sizeof(uint32_t));
+
+        libspdm_release_sender_buffer(spdm_context);
+    }
+}
+
 int libspdm_rsp_receive_send_test(void)
 {
     const struct CMUnitTest test_cases[] = {
@@ -2153,6 +2433,9 @@ int libspdm_rsp_receive_send_test(void)
                                libspdm_unit_test_reset_context),
         /* GET_VERSION during active chunk SEND transfer terminates chunk and proceeds */
         cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case8,
+                               libspdm_unit_test_reset_context),
+        /* invalid GET_VERSION during active chunk GET transfer does not terminate chunk */
+        cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case24,
                                libspdm_unit_test_reset_context),
         #if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP)
         /* session-based mutual auth enforcement: MUT_AUTH_REQUESTED (bit 0). This has no
@@ -2214,6 +2497,15 @@ int libspdm_rsp_receive_send_test(void)
                                libspdm_unit_test_reset_context),
         /* libspdm_build_response() NULL response / zero response_size / zero request_size */
         cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case22,
+                               libspdm_unit_test_reset_context),
+        /* secured message with session ID 0 is rejected as InvalidSession */
+        cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case25,
+                               libspdm_unit_test_reset_context),
+        /* oversized PCI DOE CHUNK_SEND returns ERROR(InvalidRequest) */
+        cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case26,
+                               libspdm_unit_test_reset_context),
+        /* 1-3 bytes of PCI DOE padding are trimmed from CHUNK_SEND */
+        cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case27,
                                libspdm_unit_test_reset_context),
     };
 

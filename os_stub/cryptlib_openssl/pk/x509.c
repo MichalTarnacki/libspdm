@@ -271,7 +271,7 @@ bool libspdm_asn1_get_tag(uint8_t **ptr, const uint8_t *end, size_t *length,
         return false;
     }
 
-    ret = ASN1_get_object((const uint8_t **)ptr, &obj_length, &obj_tag, &obj_class,
+    ret = ASN1_get_object((const uint8_t **)(size_t)ptr, &obj_length, &obj_tag, &obj_class,
                           (int32_t)(end - (*ptr)));
     /* Either a primitive encoding with a valid tag and definite length, but the content octets won't fit into omax, or parsing failed. */
     if (ret & OPENSSL_ASN1_ERROR_MASK) {
@@ -286,7 +286,7 @@ bool libspdm_asn1_get_tag(uint8_t **ptr, const uint8_t *end, size_t *length,
 
         /* if doesn't match tag, restore ptr to origin ptr*/
 
-        *ptr = (uint8_t *)ptr_old;
+        *ptr = (uint8_t *)(size_t)ptr_old;
         return false;
     }
 }
@@ -315,6 +315,7 @@ bool libspdm_x509_get_subject_name(const uint8_t *cert, size_t cert_size,
     bool res;
     X509 *x509_cert;
     X509_NAME *x509_name;
+    int32_t ret;
     size_t x509_name_size;
 
     /* Check input parameters.*/
@@ -345,7 +346,12 @@ bool libspdm_x509_get_subject_name(const uint8_t *cert, size_t cert_size,
         goto done;
     }
 
-    x509_name_size = i2d_X509_NAME(x509_name, NULL);
+    ret = i2d_X509_NAME(x509_name, NULL);
+    if (ret <= 0) {
+        *subject_size = 0;
+        goto done;
+    }
+    x509_name_size = (size_t)ret;
     if (*subject_size < x509_name_size) {
         *subject_size = x509_name_size;
         goto done;
@@ -862,6 +868,7 @@ bool libspdm_x509_get_issuer_name(const uint8_t *cert, size_t cert_size,
     bool res;
     X509 *x509_cert;
     X509_NAME *x509_name;
+    int32_t ret;
     size_t x509_name_size;
 
     /* Check input parameters.*/
@@ -892,7 +899,12 @@ bool libspdm_x509_get_issuer_name(const uint8_t *cert, size_t cert_size,
         goto done;
     }
 
-    x509_name_size = i2d_X509_NAME(x509_name, NULL);
+    ret = i2d_X509_NAME(x509_name, NULL);
+    if (ret <= 0) {
+        *issuer_size = 0;
+        goto done;
+    }
+    x509_name_size = (size_t)ret;
     if (*issuer_size < x509_name_size) {
         *issuer_size = x509_name_size;
         goto done;
@@ -1557,8 +1569,8 @@ bool libspdm_x509_get_extended_basic_constraints(const uint8_t *cert,
     if (cert == NULL || cert_size == 0 || basic_constraints_size == NULL) {
         return false;
     }
-    status = libspdm_x509_get_extension_data((uint8_t *)cert, cert_size,
-                                             (uint8_t *)m_libspdm_oid_basic_constraints,
+    status = libspdm_x509_get_extension_data(cert, cert_size,
+                                             m_libspdm_oid_basic_constraints,
                                              sizeof(m_libspdm_oid_basic_constraints),
                                              basic_constraints,
                                              basic_constraints_size);
@@ -2000,7 +2012,7 @@ bool libspdm_x509_get_tbs_cert(const uint8_t *cert, size_t cert_size,
         return false;
     }
 
-    *tbs_cert = (uint8_t *)temp;
+    *tbs_cert = (uint8_t *)(size_t)temp;
 
     ASN1_get_object(&temp, (long *)&length, (int *)&asn1_tag,
                     (int *)&obj_class, (long)length);
@@ -2037,99 +2049,115 @@ bool libspdm_x509_get_tbs_cert(const uint8_t *cert, size_t cert_size,
 bool libspdm_x509_verify_cert_chain(const uint8_t *root_cert, size_t root_cert_length,
                                     const uint8_t *cert_chain, size_t cert_chain_length)
 {
-    const uint8_t *tmp_ptr;
-    size_t length;
-    uint32_t asn1_tag;
-    uint32_t obj_class;
-    const uint8_t *current_cert;
-    size_t current_cert_len;
-    const uint8_t *preceding_cert;
-    size_t preceding_cert_len;
-    bool verify_flag;
-    int32_t ret;
-    uint8_t *root_ptr;
-    uint8_t *chain_ptr;
-    size_t root_obj_len;
-    size_t chain_obj_len;
-    uint8_t *end;
+    bool result;
+    X509 *root_x509;
+    X509 *leaf_x509;
+    STACK_OF(X509) *untrusted;
+    X509_STORE *store;
+    X509_STORE_CTX *ctx;
+    const unsigned char *p;
+    const uint8_t *cur;
+    const uint8_t *chain_end;
+    const uint8_t *first_cert;
+    size_t first_cert_len;
 
-    preceding_cert = root_cert;
-    preceding_cert_len = root_cert_length;
+    result = false;
+    root_x509 = NULL;
+    leaf_x509 = NULL;
+    untrusted = NULL;
+    store = NULL;
+    ctx = NULL;
+    cur = cert_chain;
+    chain_end = cert_chain + cert_chain_length;
 
-    current_cert = cert_chain;
-    length = 0;
-    current_cert_len = 0;
-
-    root_ptr = (uint8_t*)(size_t)root_cert;
-    end = root_ptr + root_cert_length;
-    verify_flag = libspdm_asn1_get_tag(
-        &root_ptr, end, &root_obj_len,
-        LIBSPDM_CRYPTO_ASN1_SEQUENCE | LIBSPDM_CRYPTO_ASN1_CONSTRUCTED);
-    if (!verify_flag) {
-        return false;
+    p = root_cert;
+    root_x509 = d2i_X509(NULL, &p, (long)root_cert_length);
+    if (root_x509 == NULL) {
+        goto done;
     }
 
-    chain_ptr = (uint8_t*)(size_t)cert_chain;
-    end = chain_ptr + cert_chain_length;
-    verify_flag = libspdm_asn1_get_tag(
-        &chain_ptr, end, &chain_obj_len,
-        LIBSPDM_CRYPTO_ASN1_SEQUENCE | LIBSPDM_CRYPTO_ASN1_CONSTRUCTED);
-    if (!verify_flag) {
-        return false;
+    /* If the chain's first certificate duplicates root_cert, root_cert must
+     * itself be a valid self-signed CA; otherwise a non-CA cert could be
+     * smuggled in as an implicit trust anchor. */
+    if (!libspdm_x509_get_cert_from_cert_chain(cert_chain, cert_chain_length, 0,
+                                               &first_cert, &first_cert_len)) {
+        goto done;
+    }
+    if ((first_cert_len == root_cert_length) &&
+        libspdm_consttime_is_mem_equal(first_cert, root_cert, root_cert_length) &&
+        !libspdm_is_root_certificate(root_cert, root_cert_length)) {
+        goto done;
     }
 
-    /*only self_signed cert is accepted when these two cert are same*/
-    if ((chain_obj_len == root_obj_len) &&
-        (libspdm_consttime_is_mem_equal(root_ptr, chain_ptr, root_obj_len)) &&
-        (!libspdm_is_root_certificate(root_cert, root_cert_length))) {
-        return false;
+    /* cert_chain is DER certs in root->...->leaf order: every cert but the last
+     * is an untrusted intermediate for a single full-path verification. */
+    untrusted = sk_X509_new_null();
+    if (untrusted == NULL) {
+        goto done;
     }
-
-    verify_flag = false;
-    while (true) {
-        tmp_ptr = current_cert;
-        ret = ASN1_get_object(
-            (const uint8_t **)&tmp_ptr, (long *)&length,
-            (int *)&asn1_tag, (int *)&obj_class,
-            (long)(cert_chain_length + cert_chain - tmp_ptr));
-        if (asn1_tag != V_ASN1_SEQUENCE || ret & OPENSSL_ASN1_ERROR_MASK) {
-            if (current_cert < cert_chain + cert_chain_length) {
-                verify_flag = false;
+    while (cur < chain_end) {
+        const unsigned char *q = cur;
+        X509 *c = d2i_X509(NULL, &q, (long)(chain_end - cur));
+        if (c == NULL) {
+            goto done;
+        }
+        if (leaf_x509 != NULL) {
+            if (!sk_X509_push(untrusted, leaf_x509)) {
+                X509_free(leaf_x509);
+                leaf_x509 = NULL; /* avoid double free at done */
+                X509_free(c);
+                goto done;
             }
-            break;
         }
-
-
-        /* Calculate current_cert length;*/
-
-        current_cert_len = tmp_ptr - current_cert + length;
-        if (current_cert + current_cert_len > cert_chain + cert_chain_length) {
-            verify_flag = false;
-            break;
-        }
-
-
-        /* Verify current_cert with preceding cert;*/
-        verify_flag =
-            libspdm_x509_verify_cert(current_cert, current_cert_len,
-                                     preceding_cert, preceding_cert_len);
-        if (verify_flag == false) {
-            break;
-        }
-
-
-        /* move Current cert to Preceding cert*/
-
-        preceding_cert_len = current_cert_len;
-        preceding_cert = current_cert;
-
-
-        /* Move to next*/
-
-        current_cert = current_cert + current_cert_len;
+        leaf_x509 = c;
+        cur = q;
+    }
+    if (leaf_x509 == NULL) {
+        goto done;
     }
 
-    return verify_flag;
+    store = X509_STORE_new();
+    if ((store == NULL) || !X509_STORE_add_cert(store, root_x509)) {
+        goto done;
+    }
+
+    /* SPDM defines a root certificate as "typically" self-signed, not
+     * mandatorily so, and a complete chain's first cert may either be a Root
+     * Certificate itself or be signed by one acting as the trust anchor.
+     * Allow partial chains so a non-self-signed but trusted root_cert (e.g. from
+     * peer_root_cert_provision) still verifies; pathLenConstraint / nameConstraints
+     * are still enforced over the full untrusted+leaf path below it. */
+    X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN);
+#if OPENSSL_IGNORE_CRITICAL
+    X509_STORE_set_flags(store, X509_V_FLAG_IGNORE_CRITICAL);
+#endif
+#if OPENSSL_IGNORE_TIME
+    X509_STORE_set_flags(store, X509_V_FLAG_NO_CHECK_TIME);
+#endif
+
+    ctx = X509_STORE_CTX_new();
+    if ((ctx == NULL) || !X509_STORE_CTX_init(ctx, store, leaf_x509, untrusted)) {
+        goto done;
+    }
+    result = (X509_verify_cert(ctx) == 1);
+
+done:
+    if (ctx != NULL) {
+        X509_STORE_CTX_free(ctx);
+    }
+    if (store != NULL) {
+        X509_STORE_free(store);
+    }
+    if (untrusted != NULL) {
+        sk_X509_pop_free(untrusted, X509_free);
+    }
+    if (leaf_x509 != NULL) {
+        X509_free(leaf_x509);
+    }
+    if (root_x509 != NULL) {
+        X509_free(root_x509);
+    }
+    return result;
 }
 
 /**
@@ -2340,7 +2368,7 @@ bool libspdm_set_attribute_for_req(X509_REQ *req, uint8_t *req_info, size_t req_
     size_t oid_len;
     uint8_t *val;
     size_t val_len;
-    size_t nid;
+    int nid;
     ASN1_OBJECT *oid_asn1_obj;
     const unsigned char *oid_for_d2i;
 
@@ -2349,6 +2377,7 @@ bool libspdm_set_attribute_for_req(X509_REQ *req, uint8_t *req_info, size_t req_
     uint8_t *der_data;
     int32_t der_len;
     X509_REQ_INFO *x509_req_info;
+    const unsigned char *req_info_for_d2i;
 
     x509_req_info = NULL;
     der_data = NULL;
@@ -2364,7 +2393,8 @@ bool libspdm_set_attribute_for_req(X509_REQ *req, uint8_t *req_info, size_t req_
     }
 
     /*get subject name from req_info and set it to CSR*/
-    x509_req_info = d2i_X509_REQ_INFO(NULL, (const unsigned char **)(&req_info), req_info_len);
+    req_info_for_d2i = req_info;
+    x509_req_info = d2i_X509_REQ_INFO(NULL, &req_info_for_d2i, (long)req_info_len);
     if (x509_req_info) {
         X509_REQ_set_subject_name(req, X509_REQ_get_subject_name((X509_REQ *)x509_req_info));
         X509_REQ_INFO_free(x509_req_info);
@@ -2397,7 +2427,7 @@ bool libspdm_set_attribute_for_req(X509_REQ *req, uint8_t *req_info, size_t req_
     pubkey_info_len = obj_len + (ptr - pubkey_info);
     der_len = i2d_PUBKEY(public_key, &der_data);
     /*check the public key info*/
-    if (!((der_len > 0) && (der_len == pubkey_info_len) &&
+    if (!((der_len > 0) && ((size_t)der_len == pubkey_info_len) &&
           (libspdm_consttime_is_mem_equal(pubkey_info, der_data, der_len)))) {
         if (der_data != NULL) {
             OPENSSL_free(der_data);
@@ -2458,7 +2488,7 @@ bool libspdm_set_attribute_for_req(X509_REQ *req, uint8_t *req_info, size_t req_
 
             /*transfer oid to nid*/
             oid_for_d2i = oid;
-            oid_asn1_obj = d2i_ASN1_OBJECT(NULL, &oid_for_d2i, oid_len);
+            oid_asn1_obj = d2i_ASN1_OBJECT(NULL, &oid_for_d2i, (long)oid_len);
             nid = OBJ_obj2nid(oid_asn1_obj);
             ASN1_OBJECT_free(oid_asn1_obj);
 
@@ -2466,7 +2496,7 @@ bool libspdm_set_attribute_for_req(X509_REQ *req, uint8_t *req_info, size_t req_
             ret = X509_REQ_add1_attr_by_NID(req, nid,
                                             V_ASN1_UTF8STRING,
                                             (const unsigned char *)val,
-                                            val_len);
+                                            (int)val_len);
             if (ret == 0) {
                 return false;
             }

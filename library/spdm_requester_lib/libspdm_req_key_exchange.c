@@ -46,7 +46,7 @@ bool libspdm_verify_key_exchange_rsp_hmac(libspdm_context_t *spdm_context,
     bool result;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -120,7 +120,7 @@ bool libspdm_verify_key_exchange_rsp_signature(
     void *context;
     uint8_t slot_id;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -290,9 +290,9 @@ bool libspdm_verify_key_exchange_rsp_signature(
  * @param  heartbeat_period       Heartbeat_period from the KEY_EXCHANGE_RSP response.
  * @param  req_slot_id_param      req_slot_id_param from the KEY_EXCHANGE_RSP response.
  * @param  measurement_hash       Measurement_hash from the KEY_EXCHANGE_RSP response.
- * @param  requester_nonce_in     If not NULL, a buffer that holds the requester nonce (32 bytes)
- * @param  requester_nonce        If not NULL, a buffer to hold the requester nonce (32 bytes).
- * @param  responder_nonce        If not NULL, a buffer to hold the responder nonce (32 bytes).
+ * @param  requester_random_in    If not NULL, a buffer that holds the requester random data (32 bytes)
+ * @param  requester_random       If not NULL, a buffer to hold the requester random data (32 bytes).
+ * @param  responder_random       If not NULL, a buffer to hold the responder random data (32 bytes).
  **/
 static libspdm_return_t libspdm_try_send_receive_key_exchange(
     libspdm_context_t *spdm_context, uint8_t measurement_hash_type,
@@ -725,6 +725,7 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
+    secured_message_version = 0;
     if (opaque_length != 0) {
         result = libspdm_process_general_opaque_data_check(spdm_context, opaque_length, ptr);
         if (!result) {

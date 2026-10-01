@@ -15,7 +15,9 @@
 
 static size_t m_libspdm_local_buffer_size;
 static uint8_t m_libspdm_local_buffer[LIBSPDM_MAX_MESSAGE_L1L2_BUFFER_SIZE];
+#if LIBSPDM_ENABLE_MSG_LOG
 static uint8_t m_libspdm_msg_log_buffer[LIBSPDM_MAX_MESSAGE_L1L2_BUFFER_SIZE * 2];
+#endif /* LIBSPDM_ENABLE_MSG_LOG */
 
 static size_t m_libspdm_opaque_data_size;
 static uint8_t m_libspdm_opaque_data[SPDM_MAX_OPAQUE_DATA_SIZE];
@@ -5511,7 +5513,7 @@ static void req_get_measurements_case35(void **state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     /* Check that the size of the two buffers are the same (fill data + request + response) */
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, m_libspdm_local_buffer_size);
-    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%x):\n",
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%zx):\n",
                    m_libspdm_local_buffer_size));
     libspdm_dump_hex(m_libspdm_local_buffer, m_libspdm_local_buffer_size);
     /* Check that the contents of the two buffers are the same (fill data, request, response) */
@@ -5679,6 +5681,7 @@ static void req_get_measurements_case38(void **state)
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PUB_KEY_ID_CAP;
     if (!libspdm_read_responder_public_key(m_libspdm_use_asym_algo, &data, &data_size)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.peer_public_key_provision = data;

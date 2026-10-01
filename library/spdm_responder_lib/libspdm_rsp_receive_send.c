@@ -120,6 +120,32 @@ static libspdm_get_spdm_response_func libspdm_get_response_func_via_last_request
     return libspdm_get_response_func_via_request_code(spdm_request->request_response_code);
 }
 
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+/**
+ * Return whether a request would interrupt a chunk transfer that is in progress. Only the chunk
+ * messages of that transfer and GET_VERSION may be received during one.
+ *
+ * @param  spdm_context       The SPDM context for the device.
+ * @param  get_response_func  The GET_SPDM_RESPONSE function of the request.
+ **/
+static bool libspdm_request_interrupts_chunk_transfer(
+    const libspdm_context_t *spdm_context, libspdm_get_spdm_response_func get_response_func)
+{
+    if (get_response_func == libspdm_get_response_version) {
+        return false;
+    }
+    if (spdm_context->chunk_context.get.chunk_in_use &&
+        (get_response_func != libspdm_get_response_chunk_get)) {
+        return true;
+    }
+    if (spdm_context->chunk_context.send.chunk_in_use &&
+        (get_response_func != libspdm_get_response_chunk_send)) {
+        return true;
+    }
+    return false;
+}
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
 libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_id,
                                          bool *is_app_message,
                                          size_t request_size, void *request)
@@ -135,6 +161,8 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
     size_t backup_decoded_message_size;
     bool result;
     bool reset_key_update;
+    uint32_t data_transfer_size;
+    bool oversized_chunk_send;
 
     context = spdm_context;
     size_t transport_header_size;
@@ -155,9 +183,9 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
     context->last_spdm_request_size =
         libspdm_get_scratch_buffer_last_spdm_request_capacity(context);
 
-    /* always use scratch buffer to response.
+    /* always use scratch buffer for the request.
      * if it is secured message, this scratch buffer will be used.
-     * if it is normal message, the response ptr will point to receiver buffer. */
+     * if it is normal message, the request ptr will point to receiver buffer. */
     transport_header_size = context->local_context.capability.transport_header_size;
     libspdm_get_scratch_buffer (context, (void **)&scratch_buffer, &scratch_buffer_size);
     #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
@@ -218,7 +246,7 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
     }
 
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "transport_decode_message : %xu\n", status));
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "transport_decode_message : %x\n", status));
         if (context->last_spdm_error.error_code != 0) {
             /* If the SPDM error code is Non-Zero, that means we need send the error message back to requester.
              * In this case, we need return SUCCESS and let caller invoke libspdm_build_response() to send an ERROR message.*/
@@ -253,10 +281,24 @@ libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_
 
     /*
      * decoded_message may contain padding zeros due to transport layer alignment requirements.
-     * trim the decoded_message size to the maximum data_transfer_size.
+     * trim the decoded_message size to the maximum data_transfer_size, except for a plaintext
+     * CHUNK_SEND that exceeds it by more than the padding: per DSP0274 it shall not be altered
+     * and its handler rejects it.
      */
-    decoded_message_size = LIBSPDM_MIN(decoded_message_size,
-                                       context->local_context.capability.data_transfer_size);
+    data_transfer_size = context->local_context.capability.data_transfer_size;
+    oversized_chunk_send = false;
+    if ((message_session_id == NULL) && !(*is_app_message) &&
+        (decoded_message_size > data_transfer_size) &&
+        (decoded_message_size - data_transfer_size >= sizeof(uint32_t)) &&
+        (decoded_message_size <=
+         libspdm_get_scratch_buffer_last_spdm_request_capacity(context))) {
+        oversized_chunk_send =
+            ((spdm_message_header_t *)decoded_message_ptr)->request_response_code ==
+            SPDM_CHUNK_SEND;
+    }
+    if (!oversized_chunk_send) {
+        decoded_message_size = LIBSPDM_MIN(decoded_message_size, data_transfer_size);
+    }
 
     context->last_spdm_request_size = decoded_message_size;
     libspdm_copy_mem (context->last_spdm_request,
@@ -387,6 +429,141 @@ void libspdm_trigger_key_update_callback(void *spdm_context, uint32_t session_id
     }
 }
 
+bool libspdm_is_request_unexpected_for_mut_auth_encap(libspdm_context_t *spdm_context,
+                                                      const uint32_t *session_id,
+                                                      uint8_t request_code,
+                                                      uint8_t *error_code)
+{
+#if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
+    /* During session-based mutual authentication, enforce that the Requester sends
+     * the next request required by the mut_auth_requested bits, before the flow
+     * advances (while response_state is still NORMAL).
+     *
+     * This keys off session_info->mut_auth_requested rather than the encapsulated
+     * context's flow_type. MUT_AUTH_REQUESTED (bit 0) has no encapsulated flow, so its
+     * flow_type is never set, and it is legal without ENCAP_CAP. */
+    libspdm_session_info_t *mut_auth_session_info = NULL;
+
+    if (session_id != NULL) {
+        mut_auth_session_info = libspdm_get_session_info_via_session_id(spdm_context, *session_id);
+    } else if ((spdm_context->latest_session_id != INVALID_SESSION_ID) &&
+               libspdm_is_capabilities_flag_supported(
+                   spdm_context, false,
+                   SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HANDSHAKE_IN_THE_CLEAR_CAP,
+                   SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HANDSHAKE_IN_THE_CLEAR_CAP)) {
+        /* With handshake in the clear the session's handshake messages, including the
+         * encapsulated flow, are sent outside of a session, so the enforcement below
+         * applies to the channel outside of a session. */
+        mut_auth_session_info = libspdm_get_session_info_via_session_id(
+            spdm_context, spdm_context->latest_session_id);
+    }
+
+    if ((mut_auth_session_info != NULL) &&
+        (spdm_context->response_state == LIBSPDM_RESPONSE_STATE_NORMAL)) {
+        libspdm_session_state_t session_state;
+        uint8_t expected_code = 0;
+        uint8_t reject_error_code = SPDM_ERROR_CODE_UNEXPECTED_REQUEST;
+        bool encap_flow_started = false;
+
+        #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
+        /* This only constrains the first request after KEY_EXCHANGE_RSP. Once the
+         * encapsulated flow has issued a request the messages that advance it are governed
+         * by the per-channel enforcement below. */
+        encap_flow_started = (mut_auth_session_info->encap_context.last_encap_request_size != 0);
+        #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+
+        session_state = libspdm_secured_message_get_session_state(
+            mut_auth_session_info->secured_message_context);
+        if ((session_state == LIBSPDM_SESSION_STATE_HANDSHAKING) && !encap_flow_started) {
+            switch (mut_auth_session_info->mut_auth_requested) {
+            case SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED:
+                expected_code = SPDM_FINISH;
+                break;
+            case SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_ENCAP_REQUEST:
+                expected_code = SPDM_GET_ENCAPSULATED_REQUEST;
+                break;
+            case SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS:
+                expected_code = SPDM_DELIVER_ENCAPSULATED_RESPONSE;
+                /* The optimized flow has already started, as the encapsulated request
+                 * accompanied KEY_EXCHANGE_RSP, so any other request is in flight rather
+                 * than unexpected. */
+                reject_error_code = SPDM_ERROR_CODE_REQUEST_IN_FLIGHT;
+                break;
+            default:
+                break;
+            }
+        }
+        /* Outside of a session GET_VERSION is also legal, as it resets the connection.
+         * The chunk transfer messages are also legal, as they deliver the response that
+         * started the flow. */
+        if ((expected_code != 0) && (request_code != expected_code) &&
+            (request_code != SPDM_CHUNK_GET) && (request_code != SPDM_CHUNK_SEND) &&
+            ((session_id != NULL) || (request_code != SPDM_GET_VERSION))) {
+            *error_code = reject_error_code;
+            return true;
+        }
+    }
+
+#if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
+    /* During basic mutual authentication, once the Responder has signaled mutual
+     * authentication in its CHALLENGE_AUTH response, the next request from the Requester
+     * must be GET_ENCAPSULATED_REQUEST. The flow has not yet issued an encapsulated
+     * request while last_encap_request_size is 0. GET_VERSION is excluded because it
+     * resets the connection, and the chunk transfer messages are excluded because a
+     * large CHALLENGE_AUTH is delivered by CHUNK_GET. */
+    if ((session_id == NULL) &&
+        (spdm_context->encap_context.flow_type == LIBSPDM_ENCAP_FLOW_BASIC_MUT_AUTH) &&
+        (spdm_context->encap_context.last_encap_request_size == 0) &&
+        (request_code != SPDM_GET_ENCAPSULATED_REQUEST) && (request_code != SPDM_CHUNK_GET) &&
+        (request_code != SPDM_CHUNK_SEND) && (request_code != SPDM_GET_VERSION)) {
+        *error_code = SPDM_ERROR_CODE_UNEXPECTED_REQUEST;
+        return true;
+    }
+#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+#endif /* LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP */
+
+#if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
+    /* An encapsulated flow is tracked per channel, so a flow in one secure session does
+     * not block requests in another session or outside of a session. While a flow is in
+     * progress on this channel only the messages that advance it, or that reset the
+     * connection, are legal. */
+    {
+        const libspdm_encap_context_t *channel_encap_context =
+            libspdm_get_encap_context_via_last_request(spdm_context);
+
+        if ((channel_encap_context != NULL) &&
+            (channel_encap_context->flow_type != LIBSPDM_ENCAP_FLOW_NONE)) {
+            switch (request_code) {
+            case SPDM_GET_ENCAPSULATED_REQUEST:
+            case SPDM_DELIVER_ENCAPSULATED_RESPONSE:
+            case SPDM_GET_VERSION:
+            case SPDM_CHUNK_GET:
+            case SPDM_CHUNK_SEND:
+                break;
+            default:
+                *error_code = SPDM_ERROR_CODE_REQUEST_IN_FLIGHT;
+                return true;
+            }
+        }
+#if LIBSPDM_RESPOND_IF_READY_SUPPORT
+        else if ((channel_encap_context != NULL) && channel_encap_context->response_not_ready) {
+            /* The flow was terminated by an encapsulated ERROR(ResponseNotReady), but the
+             * encapsulated request is still outstanding. The Requester must return to the
+             * flow so the Responder can reissue it with RESPOND_IF_READY. GET_VERSION is
+             * also allowed outside of a session, as it resets the connection. */
+            if ((request_code != SPDM_GET_ENCAPSULATED_REQUEST) &&
+                ((session_id != NULL) || (request_code != SPDM_GET_VERSION))) {
+                *error_code = SPDM_ERROR_CODE_REQUEST_IN_FLIGHT;
+                return true;
+            }
+        }
+#endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
+    }
+#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+
+    return false;
+}
+
 libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *session_id,
                                         bool is_app_message,
                                         size_t *response_size,
@@ -422,8 +599,8 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
     context = spdm_context;
     status = LIBSPDM_STATUS_UNSUPPORTED_CAP;
 
-    /* For secure message, setup my_response to scratch buffer
-     * For non-secure message, setup my_response to sender buffer*/
+    /* For secure message, set up my_response to scratch buffer
+     * For non-secure message, set up my_response to sender buffer*/
     transport_header_size = context->local_context.capability.transport_header_size;
     if (session_id != NULL) {
         libspdm_get_scratch_buffer (context, (void **)&scratch_buffer, &scratch_buffer_size);
@@ -468,7 +645,7 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
             break;
         case SPDM_ERROR_CODE_INVALID_SESSION:
             /**
-             * don't use session ID, because we dont know which right session ID should be used.
+             * don't use session ID, because we don't know which session ID should be used.
              * just ignore this message
              * return UNSUPPORTED and clear response_size to continue the dispatch without send response
              **/
@@ -503,7 +680,7 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
                  (status == LIBSPDM_STATUS_CRYPTO_ERROR))) {
                 libspdm_free_session_id(context, *session_id);
             }
-            LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "transport_encode_message : %xu\n", status));
+            LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "transport_encode_message : %x\n", status));
             return status;
         }
 
@@ -549,206 +726,22 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
          * GET_VERSION. The Responder shall return ErrorCode=UnexpectedRequest if an
          * unexpected command is received during the chunked transfer. These error codes
          * shall not interrupt the chunk transfer sequence. */
-        if (context->chunk_context.get.chunk_in_use
-            && get_response_func != libspdm_get_response_chunk_get) {
-
-            if (get_response_func == libspdm_get_response_version) {
-                /* GET_VERSION is allowed to interrupt chunk transfer.
-                 * Reset chunk get context and proceed normally. */
-                if (context->chunk_context.get.large_message != NULL) {
-                    libspdm_zero_mem(context->chunk_context.get.large_message,
-                                     context->chunk_context.get.large_message_capacity);
-                }
-                context->chunk_context.get.chunk_in_use = false;
-                context->chunk_context.get.chunk_handle++;
-                context->chunk_context.get.chunk_seq_no = 0;
-                context->chunk_context.get.large_message = NULL;
-                context->chunk_context.get.large_message_size = 0;
-                context->chunk_context.get.large_message_capacity = 0;
-                context->chunk_context.get.chunk_bytes_transferred = 0;
-            } else {
-                /* Reject with UnexpectedRequest without terminating
-                 * the chunk transfer sequence. */
-                status = libspdm_generate_error_response(
-                    context, SPDM_ERROR_CODE_UNEXPECTED_REQUEST, 0,
-                    &my_response_size, my_response);
-                goto response_dispatched;
-            }
-        }
-        if (context->chunk_context.send.chunk_in_use
-            && get_response_func != libspdm_get_response_chunk_send) {
-
-            if (get_response_func == libspdm_get_response_version) {
-                /* GET_VERSION is allowed to interrupt chunk transfer.
-                 * Reset chunk send context and proceed normally. */
-                if (context->chunk_context.send.large_message != NULL) {
-                    libspdm_zero_mem(context->chunk_context.send.large_message,
-                                     context->chunk_context.send.large_message_capacity);
-                }
-                context->chunk_context.send.chunk_in_use = false;
-                context->chunk_context.send.chunk_handle = 0;
-                context->chunk_context.send.chunk_seq_no = 0;
-                context->chunk_context.send.large_message = NULL;
-                context->chunk_context.send.large_message_size = 0;
-                context->chunk_context.send.large_message_capacity = 0;
-                context->chunk_context.send.chunk_bytes_transferred = 0;
-            } else {
-                /* Reject with UnexpectedRequest without terminating
-                 * the chunk transfer sequence. */
-                status = libspdm_generate_error_response(
-                    context, SPDM_ERROR_CODE_UNEXPECTED_REQUEST, 0,
-                    &my_response_size, my_response);
-                goto response_dispatched;
-            }
+        if (libspdm_request_interrupts_chunk_transfer(context, get_response_func)) {
+            status = libspdm_generate_error_response(
+                context, SPDM_ERROR_CODE_UNEXPECTED_REQUEST, 0,
+                &my_response_size, my_response);
+            goto response_dispatched;
         }
         #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
 
         if (get_response_func != NULL) {
-            bool reject_request = false;
-#if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
-            /* During session-based mutual authentication, enforce that the Requester sends
-             * the next request required by the mut_auth_requested bits, before the flow
-             * advances (while response_state is still NORMAL).
-             *
-             * This keys off session_info->mut_auth_requested rather than the encapsulated
-             * context's flow_type. MUT_AUTH_REQUESTED (bit 0) has no encapsulated flow, so its
-             * flow_type is never set, and it is legal without ENCAP_CAP. */
-            libspdm_session_info_t *mut_auth_session_info = NULL;
+            uint8_t reject_error_code = 0;
 
-            if ((session_id != NULL) && (session_info != NULL)) {
-                mut_auth_session_info = session_info;
-            } else if ((context->latest_session_id != INVALID_SESSION_ID) &&
-                       libspdm_is_capabilities_flag_supported(
-                           context, false,
-                           SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HANDSHAKE_IN_THE_CLEAR_CAP,
-                           SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HANDSHAKE_IN_THE_CLEAR_CAP)) {
-                /* With handshake in the clear the session's handshake messages, including the
-                 * encapsulated flow, are sent outside of a session, so the enforcement below
-                 * applies to the channel outside of a session. */
-                mut_auth_session_info = libspdm_get_session_info_via_session_id(
-                    context, context->latest_session_id);
-            }
-
-            if ((mut_auth_session_info != NULL) &&
-                (context->response_state == LIBSPDM_RESPONSE_STATE_NORMAL)) {
-                libspdm_session_state_t session_state;
-                uint8_t expected_code = 0;
-                uint8_t reject_error_code = SPDM_ERROR_CODE_UNEXPECTED_REQUEST;
-                bool encap_flow_started = false;
-
-                #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
-                /* This only constrains the first request after KEY_EXCHANGE_RSP. Once the
-                 * encapsulated flow has issued a request the messages that advance it are governed
-                 * by the per-channel enforcement below. */
-                encap_flow_started =
-                    (mut_auth_session_info->encap_context.last_encap_request_size != 0);
-                #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
-
-                session_state = libspdm_secured_message_get_session_state(
-                    mut_auth_session_info->secured_message_context);
-                if ((session_state == LIBSPDM_SESSION_STATE_HANDSHAKING) && !encap_flow_started) {
-                    switch (mut_auth_session_info->mut_auth_requested) {
-                    case SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED:
-                        expected_code = SPDM_FINISH;
-                        break;
-                    case SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_ENCAP_REQUEST:
-                        expected_code = SPDM_GET_ENCAPSULATED_REQUEST;
-                        break;
-                    case SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS:
-                        expected_code = SPDM_DELIVER_ENCAPSULATED_RESPONSE;
-                        /* The optimized flow has already started, as the encapsulated request
-                         * accompanied KEY_EXCHANGE_RSP, so any other request is in flight rather
-                         * than unexpected. */
-                        reject_error_code = SPDM_ERROR_CODE_REQUEST_IN_FLIGHT;
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                /* Outside of a session GET_VERSION is also legal, as it resets the connection.
-                 * The chunk transfer messages are also legal, as they deliver the response that
-                 * started the flow. */
-                if ((expected_code != 0) &&
-                    (spdm_request->request_response_code != expected_code) &&
-                    (spdm_request->request_response_code != SPDM_CHUNK_GET) &&
-                    (spdm_request->request_response_code != SPDM_CHUNK_SEND) &&
-                    ((session_id != NULL) ||
-                     (spdm_request->request_response_code != SPDM_GET_VERSION))) {
-                    status = libspdm_generate_error_response(
-                        context, reject_error_code, 0,
-                        &my_response_size, my_response);
-                    reject_request = true;
-                }
-            }
-
-#if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
-            /* During basic mutual authentication, once the Responder has signaled mutual
-             * authentication in its CHALLENGE_AUTH response, the next request from the Requester
-             * must be GET_ENCAPSULATED_REQUEST. The flow has not yet issued an encapsulated
-             * request while last_encap_request_size is 0. GET_VERSION is excluded because it
-             * resets the connection, and the chunk transfer messages are excluded because a
-             * large CHALLENGE_AUTH is delivered by CHUNK_GET. */
-            if ((session_id == NULL) &&
-                (context->encap_context.flow_type == LIBSPDM_ENCAP_FLOW_BASIC_MUT_AUTH) &&
-                (context->encap_context.last_encap_request_size == 0) &&
-                (spdm_request->request_response_code != SPDM_GET_ENCAPSULATED_REQUEST) &&
-                (spdm_request->request_response_code != SPDM_CHUNK_GET) &&
-                (spdm_request->request_response_code != SPDM_CHUNK_SEND) &&
-                (spdm_request->request_response_code != SPDM_GET_VERSION)) {
+            if (libspdm_is_request_unexpected_for_mut_auth_encap(
+                    context, session_id, spdm_request->request_response_code, &reject_error_code)) {
                 status = libspdm_generate_error_response(
-                    context, SPDM_ERROR_CODE_UNEXPECTED_REQUEST, 0,
-                    &my_response_size, my_response);
-                reject_request = true;
-            }
-#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
-#endif /* LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP */
-
-#if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
-            /* An encapsulated flow is tracked per channel, so a flow in one secure session does
-             * not block requests in another session or outside of a session. While a flow is in
-             * progress on this channel only the messages that advance it, or that reset the
-             * connection, are legal. */
-            if (!reject_request) {
-                const libspdm_encap_context_t *channel_encap_context =
-                    libspdm_get_encap_context_via_last_request(context);
-
-                if ((channel_encap_context != NULL) &&
-                    (channel_encap_context->flow_type != LIBSPDM_ENCAP_FLOW_NONE)) {
-                    switch (spdm_request->request_response_code) {
-                    case SPDM_GET_ENCAPSULATED_REQUEST:
-                    case SPDM_DELIVER_ENCAPSULATED_RESPONSE:
-                    case SPDM_GET_VERSION:
-                    case SPDM_CHUNK_GET:
-                    case SPDM_CHUNK_SEND:
-                        break;
-                    default:
-                        status = libspdm_generate_error_response(
-                            context, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT, 0,
-                            &my_response_size, my_response);
-                        reject_request = true;
-                        break;
-                    }
-                }
-#if LIBSPDM_RESPOND_IF_READY_SUPPORT
-                else if ((channel_encap_context != NULL) &&
-                         channel_encap_context->response_not_ready) {
-                    /* The flow was terminated by an encapsulated ERROR(ResponseNotReady), but the
-                     * encapsulated request is still outstanding. The Requester must return to the
-                     * flow so the Responder can reissue it with RESPOND_IF_READY. GET_VERSION is
-                     * also allowed outside of a session, as it resets the connection. */
-                    if ((spdm_request->request_response_code != SPDM_GET_ENCAPSULATED_REQUEST) &&
-                        ((session_id != NULL) ||
-                         (spdm_request->request_response_code != SPDM_GET_VERSION))) {
-                        status = libspdm_generate_error_response(
-                            context, SPDM_ERROR_CODE_REQUEST_IN_FLIGHT, 0,
-                            &my_response_size, my_response);
-                        reject_request = true;
-                    }
-                }
-#endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
-            }
-#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
-            if (!reject_request) {
+                    context, reject_error_code, 0, &my_response_size, my_response);
+            } else {
                 status = get_response_func(
                     context,
                     context->last_spdm_request_size,
@@ -904,7 +897,7 @@ response_dispatched:
              (status == LIBSPDM_STATUS_CRYPTO_ERROR))) {
             libspdm_free_session_id(context, *session_id);
         }
-        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "transport_encode_message : %xu\n", status));
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "transport_encode_message : %x\n", status));
         goto done;
     }
 

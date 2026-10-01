@@ -122,7 +122,7 @@
  *      - For a Requester, if the Responder sends a ResponseNotReady ERROR response then the error
  *        is immediately returned to the Integrator. The Requester cannot send a RESPOND_IF_READY
  *        request.
- *      - For a Responder, it cannot send a RESPOND_IF_READY ERROR response and does not support
+ *      - For a Responder, it cannot send a ResponseNotReady ERROR response and does not support
  *        RESPOND_IF_READY.
  *      - For a Responder in an encapsulated flow, if the Requester delivers an encapsulated
  *        ResponseNotReady ERROR then the flow ends, as with any other encapsulated ErrorCode.
@@ -149,7 +149,7 @@
 
 /* Enables assertions and debug printing. When `LIBSPDM_DEBUG_ENABLE` is defined it overrides or
  * sets the values of `LIBSPDM_DEBUG_PRINT_ENABLE`, `LIBSPDM_DEBUG_ASSERT_ENABLE`, and
- * `LIBSPDM_BLOCK_ENABLE` to the value of `LIBSPDM_DEBUG_ENABLE`.
+ * `LIBSPDM_DEBUG_BLOCK_ENABLE` to the value of `LIBSPDM_DEBUG_ENABLE`.
  *
  * Note that if this file is used with CMake and `DTARGET=Release` is defined, then all debugging
  * is disabled.

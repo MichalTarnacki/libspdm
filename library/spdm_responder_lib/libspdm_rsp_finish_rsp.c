@@ -18,9 +18,9 @@ bool libspdm_verify_finish_req_hmac(libspdm_context_t *spdm_context,
     bool result;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
-    uint8_t *mut_cert_chain_buffer;
+    const uint8_t *mut_cert_chain_buffer;
     size_t mut_cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -114,9 +114,9 @@ bool libspdm_verify_finish_req_signature(libspdm_context_t *spdm_context,
     void *context;
     uint8_t slot_id;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
-    uint8_t *mut_cert_chain_buffer;
+    const uint8_t *mut_cert_chain_buffer;
     size_t mut_cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -310,9 +310,9 @@ bool libspdm_generate_finish_rsp_hmac(libspdm_context_t *spdm_context,
     bool result;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
-    uint8_t *mut_cert_chain_buffer;
+    const uint8_t *mut_cert_chain_buffer;
     size_t mut_cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -569,6 +569,7 @@ libspdm_return_t libspdm_get_response_finish(libspdm_context_t *spdm_context, si
     request_size = sizeof(spdm_finish_request_t) + opaque_data_entry_size +
                    signature_size + hmac_size;
 
+    req_slot_id = 0;
     if ((spdm_request->header.param1 & SPDM_FINISH_REQUEST_ATTRIBUTES_SIGNATURE_INCLUDED) != 0) {
         req_slot_id = spdm_request->header.param2;
         if ((req_slot_id != 0xFF) && (req_slot_id >= SPDM_MAX_SLOT_COUNT)) {

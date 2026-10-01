@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_library(spdm_device_secret_lib_sample STATIC "")
 
@@ -32,6 +32,9 @@ target_sources(spdm_device_secret_lib_sample
         set_cert.c
         sign.c
 )
+
+# C11 for the _Static_assert checks in key_pair.c.
+set_property(TARGET spdm_device_secret_lib_sample PROPERTY C_STANDARD 11)
 
 if ((ARCH STREQUAL "arm") OR (ARCH STREQUAL "aarch64"))
     target_compile_options(spdm_device_secret_lib_sample PRIVATE -DLIBSPDM_CPU_ARM)

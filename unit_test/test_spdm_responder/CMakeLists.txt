@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_executable(test_spdm_responder)
 
@@ -8,8 +8,6 @@ target_include_directories(test_spdm_responder
         ${LIBSPDM_DIR}/include
         ${LIBSPDM_DIR}/unit_test/include
         ${LIBSPDM_DIR}/os_stub/spdm_device_secret_lib_${DEVICE}
-        ${LIBSPDM_DIR}/unit_test/cmockalib/cmocka/include
-        ${LIBSPDM_DIR}/unit_test/cmockalib/cmocka/include/cmockery
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common
         ${LIBSPDM_DIR}/os_stub
 )
@@ -70,52 +68,23 @@ target_sources(test_spdm_responder
 )
 
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    if((TOOLCHAIN STREQUAL "VS2015") OR (TOOLCHAIN STREQUAL "VS2019") OR (TOOLCHAIN STREQUAL "VS2022"))
-        target_compile_options(test_spdm_responder PRIVATE /wd4819)
-    endif()
-endif()
-
-if(TOOLCHAIN STREQUAL "ARM_DS2022")
-    target_compile_options(test_spdm_responder PRIVATE /wd4819)
-endif()
-
-if((TOOLCHAIN STREQUAL "KLEE") OR (TOOLCHAIN STREQUAL "CBMC"))
-    target_link_libraries(test_spdm_responder
-        PRIVATE
-            $<TARGET_OBJECTS:memlib>
-            $<TARGET_OBJECTS:debuglib>
-            $<TARGET_OBJECTS:spdm_responder_lib>
-            $<TARGET_OBJECTS:spdm_common_lib>
-            $<TARGET_OBJECTS:${CRYPTO_LIB_PATHS}>
-            $<TARGET_OBJECTS:rnglib>
-            $<TARGET_OBJECTS:cryptlib_${CRYPTO}>
-            $<TARGET_OBJECTS:malloclib>
-            $<TARGET_OBJECTS:spdm_crypt_lib>
-            $<TARGET_OBJECTS:spdm_secured_message_lib>
-            $<TARGET_OBJECTS:spdm_device_secret_lib_${DEVICE}>
-            $<TARGET_OBJECTS:spdm_transport_test_lib>
-            $<TARGET_OBJECTS:cmockalib>
-            $<TARGET_OBJECTS:platform_lib>
-    )
-else()
-    target_link_libraries(test_spdm_responder
-        PRIVATE
-            memlib
-            debuglib
-            spdm_requester_lib
-            spdm_responder_lib
-            spdm_common_lib
-            ${CRYPTO_LIB_PATHS}
-            rnglib
-            cryptlib_${CRYPTO}
-            malloclib
-            spdm_crypt_lib
-            spdm_crypt_ext_lib
-            spdm_secured_message_lib
-            spdm_device_secret_lib_${DEVICE}
-            spdm_transport_test_lib
-            cmockalib
-            platform_lib
-    )
-endif()
+target_link_libraries(test_spdm_responder
+    PRIVATE
+        memlib
+        debuglib
+        spdm_requester_lib
+        spdm_responder_lib
+        spdm_common_lib
+        ${CRYPTO_LIB_PATHS}
+        rnglib
+        cryptlib_${CRYPTO}
+        malloclib
+        spdm_crypt_lib
+        spdm_crypt_ext_lib
+        spdm_secured_message_lib
+        spdm_device_secret_lib_${DEVICE}
+        spdm_transport_test_lib
+        spdm_transport_pcidoe_lib
+        cmockalib
+        platform_lib
+)

@@ -9,7 +9,7 @@
 
 #include "library/spdm_common_lib.h"
 
-/* Required sender/receive buffer in device io.
+/* Required sender/receiver buffer in device io.
  * +-------+--------+---------------------------+------+--+------+---+--------+-----+
  * | TYPE  |TransHdr|      EncryptionHeader     |AppHdr|  |Random|MAC|AlignPad|FINAL|
  * |       |        |SessionId|SeqNum|Len|AppLen|      |  |      |   |        |     |
@@ -127,7 +127,7 @@ libspdm_return_t libspdm_tcp_decode_discovery_message(size_t transport_message_s
  * Return the maximum transport layer message header size.
  *   Transport Message Header Size + sizeof(spdm_secured_message_cipher_header_t))
  *
- *   For TCP, Transport Message Header Size = sizeof(tcp_spdm_binding_header_t)
+ *   For TCP, Transport Message Header Size = sizeof(spdm_tcp_binding_header_t)
  *   For PCI_DOE, Transport Message Header Size = sizeof(pci_doe_data_object_header_t)
  *
  * @param  spdm_context                  A pointer to the SPDM context.
@@ -159,7 +159,7 @@ uint8_t libspdm_tcp_get_sequence_number(uint64_t sequence_number,
  * This value is transport layer specific.
  *
  * @return Max random number count in an SPDM secured message.
- *        0 means no randum number is required.
+ *        0 means no random number is required.
  **/
 uint32_t libspdm_tcp_get_max_random_number_count(void);
 

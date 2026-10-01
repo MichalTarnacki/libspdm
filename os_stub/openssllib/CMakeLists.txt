@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 include(ExternalProject)
 
@@ -82,6 +82,13 @@ list(APPEND OPENSSL_CONFIGURE_OPTIONS --libdir=lib)
 file(MAKE_DIRECTORY ${OPENSSL_INSTALL_DIR}/include)
 file(MAKE_DIRECTORY ${OPENSSL_LIB_DIR})
 
+# $(MAKE) lets OpenSSL's make share the enclosing build's jobs; a literal make runs serially.
+if(CMAKE_GENERATOR MATCHES "^(Unix|MSYS) Makefiles$")
+    set(OPENSSL_MAKE $(MAKE))
+else()
+    set(OPENSSL_MAKE make)
+endif()
+
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(OPENSSL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/openssl-build/src/openssl_external-build)
 
@@ -101,9 +108,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
         set(OPENSSL_DLL_ARCH_SUFFIX "")
     endif()
 
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        set(OPENSSL_BUILD_CMD make)
-        set(OPENSSL_INSTALL_CMD make install_sw)
+    if(NOT MSVC)
+        set(OPENSSL_BUILD_CMD ${OPENSSL_MAKE})
+        set(OPENSSL_INSTALL_CMD ${OPENSSL_MAKE} install_sw)
         if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED")
             set(OPENSSL_LIB_FILE "${CMAKE_CURRENT_BINARY_DIR}/openssl-build/src/openssl_external-build/libcrypto-3${OPENSSL_DLL_ARCH_SUFFIX}.dll")
             set(OPENSSL_IMPLIB_FILE "${OPENSSL_LIB_DIR}/libcrypto.dll.a")
@@ -137,8 +144,8 @@ else()
             CC=${OPENSSL_CC} CFLAGS='${OPENSSL_CFLAGS}' \
             ${OPENSSL_CONFIGURE_SCRIPT} ${OPENSSL_ARCH} ${OPENSSL_CONFIGURE_OPTIONS_STR}"
     )
-    set(OPENSSL_BUILD_CMD make)
-    set(OPENSSL_INSTALL_CMD make install_sw)
+    set(OPENSSL_BUILD_CMD ${OPENSSL_MAKE})
+    set(OPENSSL_INSTALL_CMD ${OPENSSL_MAKE} install_sw)
     if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED")
         if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
             set(OPENSSL_LIB_FILE "${OPENSSL_LIB_DIR}/libcrypto.3.dylib")
@@ -173,7 +180,7 @@ set_target_properties(openssllib PROPERTIES
 )
 
 # For Windows MSVC shared library, set the import library
-if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED" AND CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED" AND CMAKE_SYSTEM_NAME MATCHES "Windows" AND MSVC)
     if(DEFINED OPENSSL_DLL_FILE)
         set_target_properties(openssllib PROPERTIES
             IMPORTED_LOCATION ${OPENSSL_DLL_FILE}
@@ -183,7 +190,7 @@ if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED" AND CMAKE_SYSTEM_NAME MATCHES "Windows
 endif()
 
 # For Windows MinGW shared library, set the import library
-if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED" AND CMAKE_SYSTEM_NAME MATCHES "Windows" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+if(OPENSSL_LIBRARY_TYPE STREQUAL "SHARED" AND CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT MSVC)
     if(DEFINED OPENSSL_IMPLIB_FILE)
         set_target_properties(openssllib PROPERTIES
             IMPORTED_IMPLIB ${OPENSSL_IMPLIB_FILE}

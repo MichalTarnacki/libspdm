@@ -105,7 +105,6 @@
 
 | Windows System  | ia32 | x64 | arm | aarch64 | riscv32 | riscv64 |
 | --------------- | ---- | --- | --- | ------- | ------- | ------- |
-| [VS2015](https://visualstudio.microsoft.com/vs/older-downloads/) |  cl  |  cl |  -  |    -    |    -    |    -    |
 | [VS2019](https://visualstudio.microsoft.com/vs/older-downloads/) |  cl  |  cl |  -  |    -    |    -    |    -    |
 | [VS2022](https://visualstudio.microsoft.com/vs/older-downloads/) |  cl  |  cl |  -  |    -    |    -    |    -    |
 | [ARM_DS2022](https://developer.arm.com/downloads/-/arm-development-studio-downloads) |  -   |  -  | armclang | armclang |    -    |    -    |
@@ -159,7 +158,7 @@ Support [CodeQL](https://codeql.github.com/) tool.
 
 1) Compiler for IA32/X64 (Choose one)
 
-    a) [Visual Studio 2022](https://visualstudio.microsoft.com/vs/older-downloads/), [Visual Studio 2019](https://visualstudio.microsoft.com/vs/older-downloads/), [Visual Studio 2015](https://visualstudio.microsoft.com/vs/older-downloads/)
+    a) [Visual Studio 2022](https://visualstudio.microsoft.com/vs/older-downloads/), [Visual Studio 2019](https://visualstudio.microsoft.com/vs/older-downloads/)
 
     b) [LLVM](https://llvm.org/) (LLVM13)
     - Install [LLVM-13.0.0-win64.exe](https://github.com/llvm/llvm-project/releases/tag/llvmorg-13.0.0). Change the LLVM install path to `C:\LLVM`, and add LLVM path `C:\LLVM\bin` in PATH environment for CLANG build on Windows.
@@ -219,7 +218,7 @@ For other architectures, refer to [build](https://github.com/DMTF/libspdm/blob/m
 
 ### Unit Test framework
 
-1) [cmocka](https://cmocka.org/). Version 1.1.7.
+1) [cmocka](https://cmocka.org/). Version 1.1.8.
 
 ## Build
 
@@ -229,6 +228,12 @@ For other architectures, refer to [build](https://github.com/DMTF/libspdm/blob/m
 
    To get a fully buildable repository, use `git submodule update --init`.
    If there is an update for submodules, use `git submodule update`.
+
+### Toolchain Selection
+
+   `TOOLCHAIN` selects the compiler and the target flags through `cmake/toolchain/<TOOLCHAIN>.cmake`, which CMake reads before it identifies the compiler.
+   A `-DCMAKE_TOOLCHAIN_FILE` on the command line takes precedence.
+   A build directory keeps the compiler and target flags it was first configured with, so use a new build directory when changing `TOOLCHAIN` or `ARCH`.
 
 ### Windows Builds for IA32/X64
    For ia32 builds, use a `x86 Native Tools Command Prompt for Visual Studio...` command prompt.
@@ -240,7 +245,7 @@ For other architectures, refer to [build](https://github.com/DMTF/libspdm/blob/m
    cd libspdm
    mkdir build
    cd build
-   cmake -G"NMake Makefiles" -DARCH=<x64|ia32> -DTOOLCHAIN=<VS2022|VS2019|VS2015|CLANG> -DTARGET=<Debug|Release> -DCRYPTO=<mbedtls|openssl> ..
+   cmake -G"NMake Makefiles" -DARCH=<x64|ia32> -DTOOLCHAIN=<VS2022|VS2019|CLANG> -DTARGET=<Debug|Release> -DCRYPTO=<mbedtls|openssl> ..
    nmake copy_sample_key
    nmake
    ```
@@ -349,7 +354,7 @@ For other architectures, refer to [build](https://github.com/DMTF/libspdm/blob/m
 
 ### Other Tests
 
-  libspdm also supports other tests such as code coverage, fuzzing, symbolic execution, and model checker.
+  libspdm also supports other tests such as code coverage and fuzzing.
 
   Refer to [test](https://github.com/DMTF/libspdm/blob/main/doc/test.md) for more details.
 

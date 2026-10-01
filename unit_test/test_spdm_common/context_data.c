@@ -362,7 +362,7 @@ static void libspdm_test_common_context_data_case1(void **state)
                               NULL, &return_data, &data_return_size);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
 
-    assert_memory_equal(data, return_data, sizeof(data));
+    assert_ptr_equal(data, return_data);
     assert_int_equal(data_return_size, sizeof(void*));
 
     /* check that nothing changed at the data location */
@@ -623,6 +623,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case6(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo_test, &data_test,
                                                          &data_size_test, &hash_test, &hash_size_test)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain(
@@ -714,6 +715,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case7(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo_test, &data_test,
                                                          &data_size_test, &hash_test, &hash_size_test)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain(
@@ -822,6 +824,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case8(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo_test, &data_test,
                                                          &data_size_test, &hash_test, &hash_size_test)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain(
@@ -1394,6 +1397,7 @@ static void libspdm_test_export_master_secret_case19(void **state)
     assert_int_equal(export_master_secret_size, LIBSPDM_MAX_HASH_SIZE - 4);
 }
 
+#if LIBSPDM_CHECK_SPDM_CONTEXT
 static void libspdm_test_check_context_case20(void **state)
 {
     void *context;
@@ -1434,6 +1438,7 @@ static void libspdm_test_check_context_case20(void **state)
     result = libspdm_check_context (context);
     assert_int_equal(false, result);
 }
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
 
 static void libspdm_test_max_session_count_case21(void **state)
 {
@@ -1717,9 +1722,10 @@ static void libspdm_test_process_opaque_data_case22(void **state)
 
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
 /**
- * Test 23: libspdm_reset_context releases the peer leaf certificate public key.
- * Expected Behavior: after a parsed leaf public key is stored for a slot,
- * reset_context frees it and clears the slot, so it is not orphaned when the
+ * Test 23: libspdm_reset_context empties the peer certificate chain slots.
+ * Expected Behavior: a slot that holds a chain as GET_CERTIFICATE leaves it, with the hash of the
+ * chain and its parsed leaf public key, is emptied by reset_context. The key is freed rather than
+ * orphaned, and the hash is cleared so that the slot does not look populated without a key when the
  * connection is re-established (reset_context runs on every GET_VERSION).
  **/
 static void libspdm_test_reset_context_leaf_key_case23(void **state)
@@ -1752,9 +1758,16 @@ static void libspdm_test_reset_context_leaf_key_case23(void **state)
     assert_true(result);
     assert_non_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
 
+    result = libspdm_hash_all(m_libspdm_use_hash_algo, data, data_size,
+                              spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
+    assert_true(result);
+    spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
+        libspdm_get_hash_size(m_libspdm_use_hash_algo);
+
     libspdm_reset_context(spdm_context);
 
     assert_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+    assert_int_equal(spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size, 0);
 
     free(data);
 }
@@ -2382,6 +2395,196 @@ static void libspdm_test_aead_limit_small_exponent_case30(void **state)
     }
 }
 
+/**
+ * Test 31: libspdm_reset_context restores the SPDM 1.0 and 1.1 signature endianness setting.
+ * Expected Behavior: the Integrator selects BIG_OR_LITTLE and a successful verification narrows it
+ * to the endianness of the peer's signatures. A connection reset returns it to BIG_OR_LITTLE, so the
+ * peer of the next connection may use either endianness.
+ **/
+static void libspdm_test_reset_context_verify_signature_endian_case31(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    uint8_t endian;
+    libspdm_return_t status;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x1F;
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
+    endian = LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE;
+    status = libspdm_set_data(spdm_context, LIBSPDM_DATA_SPDM_VERSION_10_11_VERIFY_SIGNATURE_ENDIAN,
+                              &parameter, &endian, sizeof(endian));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    /* The narrowing that a successful verification of a little-endian signature performs. */
+    spdm_context->spdm_10_11_verify_signature_endian =
+        LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_LITTLE_ONLY;
+
+    libspdm_reset_context(spdm_context);
+
+    assert_int_equal(spdm_context->spdm_10_11_verify_signature_endian,
+                     LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE);
+}
+
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+/**
+ * Test 32: libspdm_reset_context ends a chunk transfer in either direction.
+ * Expected Behavior: a CHUNK_GET or CHUNK_SEND transfer that is in progress is ended and the large
+ * message it was carrying is erased, so a connection reset on the Requester clears the chunk state
+ * as a GET_VERSION does on the Responder.
+ **/
+static void libspdm_test_reset_context_chunk_case32(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    void *scratch_buffer;
+    size_t scratch_buffer_size;
+    uint8_t *large_message;
+    size_t large_message_capacity;
+    libspdm_chunk_info_t *chunk_info[2];
+    size_t index;
+    size_t byte_index;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x20;
+
+    libspdm_get_scratch_buffer(spdm_context, &scratch_buffer, &scratch_buffer_size);
+    large_message = (uint8_t *)scratch_buffer +
+                    libspdm_get_scratch_buffer_large_message_offset(spdm_context);
+    large_message_capacity = libspdm_get_scratch_buffer_large_message_capacity(spdm_context);
+
+    chunk_info[0] = &spdm_context->chunk_context.get;
+    chunk_info[1] = &spdm_context->chunk_context.send;
+
+    for (index = 0; index < LIBSPDM_ARRAY_SIZE(chunk_info); index++) {
+        libspdm_set_mem(large_message, large_message_capacity, 0xa5);
+        chunk_info[index]->chunk_in_use = true;
+        chunk_info[index]->chunk_seq_no = 2;
+        chunk_info[index]->chunk_bytes_transferred = large_message_capacity / 2;
+        chunk_info[index]->large_message = large_message;
+        chunk_info[index]->large_message_size = large_message_capacity;
+        chunk_info[index]->large_message_capacity = large_message_capacity;
+
+        libspdm_reset_context(spdm_context);
+
+        assert_false(chunk_info[index]->chunk_in_use);
+        assert_int_equal(chunk_info[index]->chunk_seq_no, 0);
+        assert_int_equal(chunk_info[index]->chunk_bytes_transferred, 0);
+        assert_null(chunk_info[index]->large_message);
+        assert_int_equal(chunk_info[index]->large_message_size, 0);
+        assert_int_equal(chunk_info[index]->large_message_capacity, 0);
+        for (byte_index = 0; byte_index < large_message_capacity; byte_index++) {
+            assert_int_equal(large_message[byte_index], 0);
+        }
+    }
+}
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT
+/**
+ * Test 33: A Responder sets LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER to the Requester's
+ * certificate chain. The default Requester algorithm (RSASSA-2048) and Responder algorithm
+ * (ECDSA P-256) use different key types.
+ * Expected Behavior: the peer is the Requester, so the leaf public key is parsed with
+ * ReqBaseAsymAlg and libspdm_set_data succeeds. libspdm_reset_context then releases the key with
+ * the same algorithm.
+ **/
+static void libspdm_test_set_data_peer_cert_chain_responder_case33(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    libspdm_return_t status;
+    void *data;
+    size_t data_size;
+    void *hash;
+    size_t hash_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x21;
+
+    spdm_context->local_context.is_requester = false;
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->connection_info.algorithm.pqc_asym_algo = 0;
+    spdm_context->connection_info.algorithm.req_base_asym_alg = m_libspdm_use_req_asym_algo;
+    spdm_context->connection_info.algorithm.req_pqc_asym_alg = 0;
+
+    if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_req_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_CONNECTION;
+    parameter.additional_data[0] = 0;
+    status = libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, &parameter,
+                              data, data_size);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_non_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    libspdm_reset_context(spdm_context);
+    assert_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    free(data);
+}
+
+/**
+ * Test 34: A Requester sets LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER to the Responder's
+ * certificate chain, with the same algorithms as Test 33.
+ * Expected Behavior: the peer is the Responder, so the leaf public key is parsed with
+ * BaseAsymAlgo and libspdm_set_data succeeds.
+ **/
+static void libspdm_test_set_data_peer_cert_chain_requester_case34(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    libspdm_return_t status;
+    void *data;
+    size_t data_size;
+    void *hash;
+    size_t hash_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x22;
+
+    spdm_context->local_context.is_requester = true;
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->connection_info.algorithm.pqc_asym_algo = 0;
+    spdm_context->connection_info.algorithm.req_base_asym_alg = m_libspdm_use_req_asym_algo;
+    spdm_context->connection_info.algorithm.req_pqc_asym_alg = 0;
+
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_CONNECTION;
+    parameter.additional_data[0] = 0;
+    status = libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, &parameter,
+                              data, data_size);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_non_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    libspdm_reset_context(spdm_context);
+    assert_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    free(data);
+}
+#endif /* !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT */
+
 static libspdm_test_context_t m_libspdm_common_context_data_test_context = {
     LIBSPDM_TEST_CONTEXT_VERSION,
     true,
@@ -2426,7 +2629,9 @@ int libspdm_common_context_data_test_main(void)
 
         /* Test that the Export Master Secret can be exported and cleared. */
         cmocka_unit_test(libspdm_test_export_master_secret_case19),
+#if LIBSPDM_CHECK_SPDM_CONTEXT
         cmocka_unit_test(libspdm_test_check_context_case20),
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
 
         /* Test the max DHE/PSK session count */
         cmocka_unit_test(libspdm_test_max_session_count_case21),
@@ -2435,7 +2640,7 @@ int libspdm_common_context_data_test_main(void)
         cmocka_unit_test(libspdm_test_process_opaque_data_case22),
 
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
-        /* reset_context frees the stored peer leaf certificate public key */
+        /* reset_context empties the peer certificate chain slots */
         cmocka_unit_test(libspdm_test_reset_context_leaf_key_case23),
 #endif
 
@@ -2453,6 +2658,19 @@ int libspdm_common_context_data_test_main(void)
         cmocka_unit_test(libspdm_test_aead_limit_peer_support_case29),
         /* DSP0277 1.3 AEAD limit: exponent boundary semantics (exp 0, 1, 63, 64). */
         cmocka_unit_test(libspdm_test_aead_limit_small_exponent_case30),
+
+        /* reset_context restores the SPDM 1.0 and 1.1 signature endianness setting */
+        cmocka_unit_test(libspdm_test_reset_context_verify_signature_endian_case31),
+
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+        /* reset_context ends a chunk transfer in either direction */
+        cmocka_unit_test(libspdm_test_reset_context_chunk_case32),
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT
+        /* The peer leaf key is parsed with the peer's asymmetric algorithm. */
+        cmocka_unit_test(libspdm_test_set_data_peer_cert_chain_responder_case33),
+        cmocka_unit_test(libspdm_test_set_data_peer_cert_chain_requester_case34),
+#endif
     };
 
     libspdm_setup_test_context(&m_libspdm_common_context_data_test_context);

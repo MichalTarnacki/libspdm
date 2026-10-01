@@ -28,7 +28,7 @@ extern "C" {
  *             The message exchange in a connection is plain text.*/
 
 /* Session: In one connection with one device, a host may create multiple sessions.
- *          The session starts with via KEY_EXCHANGE or PSK_EXCHANGE, and step with END_SESSION.
+ *          The session starts with KEY_EXCHANGE or PSK_EXCHANGE, and ends with END_SESSION.
  *          A session can be unique identified by a session ID, returned from the device.
  *          The message exchange in a session is cipher text.*/
 
@@ -385,10 +385,10 @@ libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
 /**
  * Initialize an libspdm_fips_selftest_context.
  *
- * @param  spdm_context         A pointer to the SPDM context.
- * @param  buffer_size          The buffer size to hold large intermediate results.
- * @param  buffer               The buffer provided by integrator to
- *                              hold large intermediate results.
+ * @param  fips_selftest_context  A pointer to the FIPS self-test context.
+ * @param  buffer_size            The buffer size to hold large intermediate results.
+ * @param  buffer                 The buffer provided by integrator to
+ *                                hold large intermediate results.
  */
 libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context,
                                                     size_t buffer_size,
@@ -503,7 +503,7 @@ size_t libspdm_get_context_size_without_secured_context(void);
  *                       The caller is responsible for having either implicit or explicit ownership
  *                       of the buffer. The message pointer shall be inside of
  *                       [msg_buf_ptr, msg_buf_ptr + max_msg_size] from acquired sender_buffer.
- * @param  timeout       The timeout, in microsends, to use for the execution of the message.
+ * @param  timeout       The timeout, in microseconds, to use for the execution of the message.
  *                       If called in a Requester context then timeout is equal to RTT.
  *                       If called in a Responder context then timeout is equal to 0 and Responder
  *                       should not timeout when sending the message.
@@ -532,7 +532,7 @@ typedef libspdm_return_t (*libspdm_device_send_message_func)(void *spdm_context,
  *                       of the buffer. On input, the message pointer shall be msg_buf_ptr from
  *                       acquired receiver_buffer. On output, the message pointer shall be inside of
  *                       [msg_buf_ptr, msg_buf_ptr + max_msg_size] from acquired receiver_buffer.
- * @param  timeout       The timeout, in microsends, to use for the execution of the message.
+ * @param  timeout       The timeout, in microseconds, to use for the execution of the message.
  *                       If called in a Requester context then timeout is equal to RTT plus either
  *                       CT or ST1.
  *                       If called in a Responder context then timeout is equal to 0 and Responder
@@ -563,7 +563,7 @@ void libspdm_register_device_io_func(
 /**
  * Acquire a device sender buffer for transport layer message.
  *
- * @param  context       A pointer to the SPDM context.
+ * @param  spdm_context  A pointer to the SPDM context.
  * @param  msg_buf_ptr   A pointer to a sender buffer.
  *
  * @retval LIBSPDM_STATUS_SUCCESS       The sender buffer has been acquired.
@@ -575,7 +575,7 @@ typedef libspdm_return_t (*libspdm_device_acquire_sender_buffer_func)(
 /**
  * Release a device sender buffer for transport layer message.
  *
- * @param  context                       A pointer to the SPDM context.
+ * @param  spdm_context                  A pointer to the SPDM context.
  * @param  msg_buf_ptr                   A pointer to a sender buffer.
  **/
 typedef void (*libspdm_device_release_sender_buffer_func)(void *spdm_context,
@@ -584,8 +584,8 @@ typedef void (*libspdm_device_release_sender_buffer_func)(void *spdm_context,
 /**
  * Acquire a device receiver buffer for transport layer message.
  *
- * @param  context       A pointer to the SPDM context.
- * @param  msg_buf_pt    A pointer to a receiver buffer.
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  msg_buf_ptr   A pointer to a receiver buffer.
  *
  * @retval LIBSPDM_STATUS_SUCCESS       The receiver buffer has been acquired.
  * @retval LIBSPDM_STATUS_ACQUIRE_FAIL  Unable to acquire receiver buffer.
@@ -596,8 +596,8 @@ typedef libspdm_return_t (*libspdm_device_acquire_receiver_buffer_func)(
 /**
  * Release a device receiver buffer for transport layer message.
  *
- * @param  context      A pointer to the SPDM context.
- * @param  msg_buf_ptr  A pointer to a receiver buffer.
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  msg_buf_ptr   A pointer to a receiver buffer.
  **/
 typedef void (*libspdm_device_release_receiver_buffer_func)(void *spdm_context,
                                                             const void *msg_buf_ptr);
@@ -754,7 +754,7 @@ void libspdm_register_transport_layer_func(
  * The SPDM Integrator must call libspdm_get_sizeof_required_scratch_buffer to get the size,
  * then allocate enough scratch buffer and call libspdm_set_scratch_buffer().
  *
- * @param  context  A pointer to the SPDM context.
+ * @param  spdm_context  A pointer to the SPDM context.
  *
  * @return the size of required scratch buffer.
  **/
@@ -823,13 +823,13 @@ typedef bool (*libspdm_verify_spdm_cert_chain_func)(
  *
  * If it is NOT registered, the default verification in SPDM lib will be used. It verifies:
  *  1) The integrity of the certificate chain, (Root Cert Hash->Root Cert->Cert Chain), according to X.509.
- *  2) The trust anchor, according LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT or LIBSPDM_DATA_PEER_PUBLIC_CERT_CHAIN.
+ *  2) The trust anchor, according to LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT.
  * If it is registered, SPDM lib will use this function to verify the certificate.
  *
  * This function must be called after libspdm_init_context, and before any SPDM communication.
  *
- * @param  spdm_context        A pointer to the SPDM context.
- * @param  verify_certificate  The function to verify an SPDM certificate after GET_CERTIFICATE.
+ * @param  spdm_context            A pointer to the SPDM context.
+ * @param  verify_spdm_cert_chain  The function to verify an SPDM certificate after GET_CERTIFICATE.
  **/
 void libspdm_register_verify_spdm_cert_chain_func(
     void *spdm_context,
@@ -856,9 +856,9 @@ void *libspdm_get_session_info_via_session_id(void *spdm_context, uint32_t sessi
 void *libspdm_get_secured_message_context_via_session_id(void *spdm_context, uint32_t session_id);
 
 /**
- * This function gets the secured message context via session ID.
+ * This function gets the secured message context via session info.
  *
- * @param  spdm_session_info  A pointer to the SPDM context.
+ * @param  spdm_session_info  A pointer to the SPDM session info.
  *
  * @return secured message context.
  **/
@@ -956,7 +956,7 @@ bool libspdm_get_local_public_key_buffer(void *spdm_context,
  * byte2 - libspdm minor version
  * byte1 - libspdm patch version
  * byte0 - libspdm alpha
- *         (office release with tag: 0, release candidate with tag: 1, non official release: 0xFF)
+ *         (official release with tag: 0, release candidate with tag: 1, non official release: 0xFF)
  **/
 uint32_t libspdm_module_version(void);
 
@@ -1008,7 +1008,7 @@ typedef libspdm_return_t (*libspdm_vendor_response_callback_func)(
  * @param svh_vendor_id_len  Length, in bytes, of the svh_vendor_id field.
  * @param svh_vendor_id      Vendor ID assigned by the Registry or Standards Body. If the value of
  *                           svh_vendor_id_len is 0 then this is NULL.
- * @param event_type_id      Event type identifier. If svh_id is SPDM_REGISTRY_ID_ DMTF then this is
+ * @param event_type_id      Event type identifier. If svh_id is SPDM_REGISTRY_ID_DMTF then this is
  *                           one of the SPDM_DMTF_EVENT_TYPE_* macros.
  * @param event_detail_len   Size, in bytes, of event_detail.
  * @param event_detail       Details of the event.

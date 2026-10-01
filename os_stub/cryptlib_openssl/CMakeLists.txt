@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_library(cryptlib_openssl STATIC "")
 
@@ -45,13 +45,10 @@ target_sources(cryptlib_openssl
         rand/rand.c
 )
 
-target_compile_options(cryptlib_openssl PRIVATE ${OPENSSL_FLAGS})
-
 if(ENABLE_BINARY_BUILD STREQUAL "1")
-    target_link_libraries(cryptlib_openssl PUBLIC ssl crypto memlib)
+    target_link_libraries(cryptlib_openssl PUBLIC ssl crypto)
 else()
-    target_link_libraries(cryptlib_openssl PUBLIC openssllib memlib)
-target_link_libraries(cryptlib_openssl PUBLIC openssllib memlib)
+    target_link_libraries(cryptlib_openssl PUBLIC openssllib)
 endif()
 
 if (LIBSPDM_TPM_SUPPORT)

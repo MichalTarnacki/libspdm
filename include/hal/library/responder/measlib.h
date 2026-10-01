@@ -23,7 +23,7 @@
  * @param  spdm_version  Indicates the negotiated SPDM version.
  *
  * @param  measurement_specification  Indicates the measurement specification.
- * Must be a SPDM_MEASUREMENT_BLOCK_HEADER_SPECIFICATION_* value in spdm.h.
+ * Must be an SPDM_MEASUREMENT_SPECIFICATION_* value in spdm.h.
  *
  * @param  measurement_hash_algo  Indicates the measurement hash algorithm.
  * Must be SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_* value in spdm.h.
@@ -43,7 +43,7 @@
  * On success, "measurements_count", "measurements", and "measurements_size"
  * fields will be set with data from all measurements.
  *
- * @param request_attribute A bitmask who fields are SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_*.
+ * @param request_attribute A bitmask whose fields are SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_*.
  *
  * @param  requester_nonce  If not NULL, a pointer to the requester nonce (32 bytes) from the
  *                          GET_MEASUREMENTS request. It is present when the GENERATE_SIGNATURE
@@ -62,7 +62,7 @@
  * returned however, and "measurements" and "measurements_size" are unmodified.
  *
  * When "measurement_index" is non-zero, returns the number of measurements
- * returned in "measurements" and "measurements_size". If "measurements_index"
+ * returned in "measurements" and "measurements_size". If "measurement_index"
  * is an invalid index not supported by the device, "measurements_count" will
  * return 0 and the function will return LIBSPDM_STATUS_MEAS_INVALID_INDEX.
  *
@@ -103,14 +103,14 @@ extern libspdm_return_t libspdm_measurement_collection(
  * @param  spdm_version  Indicates the negotiated SPDM version.
  *
  * @param  measurement_specification  Indicates the measurement specification.
- * Must be a SPDM_MEASUREMENT_BLOCK_HEADER_SPECIFICATION_* value in spdm.h.
+ * Must be an SPDM_MEASUREMENT_SPECIFICATION_* value in spdm.h.
  *
  * @param  measurement_hash_algo  Indicates the measurement hash algorithm.
  * Must be SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_* value in spdm.h.
  *
  * @param  measurement_index  The index of the measurement to collect.
  *
- * @param request_attribute A bitmask who fields are SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_*.
+ * @param request_attribute A bitmask whose fields are SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_*.
  *
  * @param  request_context_size  The size, in bytes, of request_context.
  * @param  request_context       If spdm_version is greater than 1.2, then it is a pointer to the
@@ -145,7 +145,7 @@ extern bool libspdm_measurement_opaque_data(
  * @param  base_hash_algo             The hash algo to use on summary.
  * @param  measurement_specification  Indicates the measurement specification.
  *                                    It must align with measurement_specification.
- *                                    (SPDM_MEASUREMENT_BLOCK_HEADER_SPECIFICATION_*)
+ *                                    (SPDM_MEASUREMENT_SPECIFICATION_*)
  * @param  measurement_hash_algo      Indicates the measurement hash algorithm.
  *                                    (SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_*)
  *
@@ -179,7 +179,7 @@ extern bool libspdm_generate_measurement_summary_hash(
  * @param  mel_specification          Indicates the measurement extension log specification.
  * @param  measurement_specification  Indicates the measurement specification.
  *                                    It must align with measurement_specification.
- *                                    (SPDM_MEASUREMENT_BLOCK_HEADER_SPECIFICATION_*)
+ *                                    (SPDM_MEASUREMENT_SPECIFICATION_*)
  * @param  measurement_hash_algo  Indicates the measurement hash algorithm.
  *                                Must be SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_* value in spdm.h.
  * @param  spdm_mel               Return the pointer of MEL.

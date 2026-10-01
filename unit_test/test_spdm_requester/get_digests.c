@@ -791,6 +791,7 @@ static libspdm_return_t receive_message(
                         m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                         &m_libspdm_local_certificate_chain_test_cert,
                         &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -822,6 +823,7 @@ static libspdm_return_t receive_message(
                         m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                         &m_libspdm_local_certificate_chain_test_cert,
                         &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -1438,7 +1440,7 @@ static void req_get_digests_case23(void **state)
     arbitrary_size = 8;
     assert_int_equal(spdm_context->transcript.message_b.buffer_size,
                      arbitrary_size + m_libspdm_local_buffer_size);
-    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%x):\n",
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%zx):\n",
                    m_libspdm_local_buffer_size));
     libspdm_dump_hex(m_libspdm_local_buffer, m_libspdm_local_buffer_size);
     assert_memory_equal(spdm_context->transcript.message_b.buffer + arbitrary_size,
@@ -1513,6 +1515,7 @@ static void req_get_digests_case24(void **state)
                 m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                 &m_libspdm_local_certificate_chain_test_cert,
                 &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+            assert_true(false);
             return;
         }
     }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 if(TOOLCHAIN MATCHES "VS")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /GL-")
@@ -43,6 +43,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
     endif()
 endif()
 
-if(TOOLCHAIN MATCHES "CLANG")
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(intrinsiclib PRIVATE -Wno-builtin-declaration-mismatch -Wno-nonnull-compare)
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     target_compile_options(intrinsiclib PRIVATE -Wno-incompatible-library-redeclaration)
 endif()

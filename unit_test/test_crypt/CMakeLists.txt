@@ -1,6 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
-
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_executable(test_crypt)
 
@@ -38,39 +36,21 @@ target_sources(test_crypt
         os_support.c
 )
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    if((TOOLCHAIN STREQUAL "VS2015") OR (TOOLCHAIN STREQUAL "VS2019") OR (TOOLCHAIN STREQUAL "VS2022"))
-        target_compile_options(test_crypt PRIVATE /wd4819)
-    endif()
-endif()
-
 if(TOOLCHAIN STREQUAL "ARM_DS2022")
     target_link_libraries(test_crypt PRIVATE armbuild_lib)
 endif()
 
-if((TOOLCHAIN STREQUAL "KLEE") OR (TOOLCHAIN STREQUAL "CBMC"))
-    target_link_libraries(test_crypt
-        PRIVATE
-            $<TARGET_OBJECTS:memlib>
-            $<TARGET_OBJECTS:debuglib>
-            $<TARGET_OBJECTS:${CRYPTO_LIB_PATHS}>
-            $<TARGET_OBJECTS:rnglib>
-            $<TARGET_OBJECTS:cryptlib_${CRYPTO}>
-            $<TARGET_OBJECTS:malloclib>
+target_link_libraries(test_crypt
+    PRIVATE
+        memlib
+        debuglib
+        ${CRYPTO_LIB_PATHS}
+        rnglib
+        cryptlib_${CRYPTO}
+        malloclib
+        spdm_crypt_lib
+        spdm_crypt_ext_lib
     )
-else()
-    target_link_libraries(test_crypt
-        PRIVATE
-            memlib
-            debuglib
-            ${CRYPTO_LIB_PATHS}
-            rnglib
-            cryptlib_${CRYPTO}
-            malloclib
-            spdm_crypt_lib
-            spdm_crypt_ext_lib
-        )
-endif()
 
 # Windows DLL path fix for OpenSSL shared library
 if(CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT TOOLCHAIN STREQUAL "NONE")

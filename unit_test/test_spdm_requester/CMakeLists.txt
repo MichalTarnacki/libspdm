@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_executable(test_spdm_requester)
 
@@ -8,8 +8,6 @@ target_include_directories(test_spdm_requester
         ${LIBSPDM_DIR}/include
         ${LIBSPDM_DIR}/unit_test/include
         ${LIBSPDM_DIR}/os_stub/spdm_device_secret_lib_${DEVICE}
-        ${LIBSPDM_DIR}/unit_test/cmockalib/cmocka/include
-        ${LIBSPDM_DIR}/unit_test/cmockalib/cmocka/include/cmockery
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common
         ${LIBSPDM_DIR}/os_stub
 )
@@ -70,59 +68,35 @@ target_sources(test_spdm_requester
         error_test/encap_supported_event_types_err.c
         error_test/encap_subscribe_event_types_ack_err.c
         error_test/encap_certificate_err.c
+        error_test/get_csr_err.c
+        error_test/get_measurement_extension_log_err.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/common.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/algo.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/support.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/event_support.c
 )
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    if((TOOLCHAIN STREQUAL "VS2015") OR (TOOLCHAIN STREQUAL "VS2019") OR (TOOLCHAIN STREQUAL "VS2022"))
-        target_compile_options(test_spdm_requester PRIVATE /wd4819)
-    endif()
-endif()
-
 if(TOOLCHAIN STREQUAL "ARM_DS2022")
     set(test_spdm_requester_LIBRARY ${test_spdm_requester_LIBRARY} armbuild_lib)
     target_link_libraries(test_spdm_requester PRIVATE armbuild_lib)
 endif()
 
-if((TOOLCHAIN STREQUAL "KLEE") OR (TOOLCHAIN STREQUAL "CBMC"))
 target_link_libraries(test_spdm_requester
-        PRIVATE
-            $<TARGET_OBJECTS:memlib>
-            $<TARGET_OBJECTS:debuglib>
-            $<TARGET_OBJECTS:spdm_requester_lib>
-            $<TARGET_OBJECTS:spdm_common_lib>
-            $<TARGET_OBJECTS:${CRYPTO_LIB_PATHS}>
-            $<TARGET_OBJECTS:rnglib>
-            $<TARGET_OBJECTS:cryptlib_${CRYPTO}>
-            $<TARGET_OBJECTS:malloclib>
-            $<TARGET_OBJECTS:spdm_crypt_lib>
-            $<TARGET_OBJECTS:spdm_secured_message_lib>
-            $<TARGET_OBJECTS:spdm_device_secret_lib_${DEVICE}>
-            $<TARGET_OBJECTS:spdm_transport_test_lib>
-            $<TARGET_OBJECTS:cmockalib>
-            $<TARGET_OBJECTS:platform_lib>
-    )
-else()
-    target_link_libraries(test_spdm_requester
-        PRIVATE
-            memlib
-            debuglib
-            spdm_responder_lib
-            spdm_requester_lib
-            spdm_common_lib
-            ${CRYPTO_LIB_PATHS}
-            rnglib
-            cryptlib_${CRYPTO}
-            malloclib
-            spdm_crypt_lib
-            spdm_crypt_ext_lib
-            spdm_secured_message_lib
-            spdm_device_secret_lib_${DEVICE}
-            spdm_transport_test_lib
-            cmockalib
-            platform_lib
-    )
-endif()
+    PRIVATE
+        memlib
+        debuglib
+        spdm_responder_lib
+        spdm_requester_lib
+        spdm_common_lib
+        ${CRYPTO_LIB_PATHS}
+        rnglib
+        cryptlib_${CRYPTO}
+        malloclib
+        spdm_crypt_lib
+        spdm_crypt_ext_lib
+        spdm_secured_message_lib
+        spdm_device_secret_lib_${DEVICE}
+        spdm_transport_test_lib
+        cmockalib
+        platform_lib
+)

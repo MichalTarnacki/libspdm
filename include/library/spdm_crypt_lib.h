@@ -261,7 +261,7 @@ bool libspdm_hash_final(uint32_t base_hash_algo, void *hash_context, uint8_t *ha
  * @param  base_hash_algo  SPDM base_hash_algo
  *
  * @return  Pointer to the HMAC context that has been initialized.
- *          If the allocations fails, libspdm_hash_new() returns NULL.
+ *          If the allocation fails, libspdm_hmac_new() returns NULL.
  **/
 void *libspdm_hmac_new(uint32_t base_hash_algo);
 
@@ -369,7 +369,7 @@ uint32_t libspdm_get_measurement_hash_size(uint32_t measurement_hash_algo);
  * @param  data_size       Size of data buffer in bytes.
  * @param  key             Pointer to the user-supplied key.
  * @param  key_size        Key size in bytes.
- * @param  hash_value      Pointer to a buffer that receives the HMAC value.
+ * @param  hmac_value      Pointer to a buffer that receives the HMAC value.
  *
  * @retval true   HMAC computation succeeded.
  * @retval false  HMAC computation failed.
@@ -418,7 +418,7 @@ bool libspdm_hkdf_expand(uint32_t base_hash_algo, const uint8_t *prk,
 /**
  * This function returns the SPDM asymmetric algorithm size.
  *
- * @param  base_asym_algo  SPDM base_hash_algo
+ * @param  base_asym_algo  SPDM base_asym_algo
  *
  * @return SPDM asymmetric algorithm size.
  **/
@@ -454,7 +454,7 @@ bool libspdm_asym_get_public_key_from_x509(uint32_t base_asym_algo,
  *                         retrieved public key component.
  *                         Use libspdm_asym_free() function to free the resource.
  *
- * @retval  true   Private key was retrieved successfully.
+ * @retval  true   Public key was retrieved successfully.
  * @retval  false  Invalid DER key data.
  **/
 bool libspdm_asym_get_public_key_from_der(uint32_t base_asym_algo,
@@ -492,8 +492,6 @@ void libspdm_copy_signature_swap_endian(
  * @param  message_size    Size of the message in bytes.
  * @param  signature       Pointer to asymmetric signature to be verified.
  * @param  sig_size        Size of signature in bytes.
- * @param  endian          Endian to be tried. If both endians are selected,
- *                         the one actually used successfully is returned.
  *
  * @retval  true   Valid asymmetric signature.
  * @retval  false  Invalid asymmetric signature or invalid asymmetric context.
@@ -523,8 +521,6 @@ bool libspdm_asym_verify_ex(
  * @param  hash_size       Size of the hash in bytes.
  * @param  signature       Pointer to asymmetric signature to be verified.
  * @param  sig_size        Size of signature in bytes.
- * @param  endian          Endian to be tried. If both endians are selected,
- *                         the one actually used successfully is returned.
  *
  * @retval  true   Valid asymmetric signature.
  * @retval  false  Invalid asymmetric signature or invalid asymmetric context.
@@ -611,7 +607,7 @@ uint32_t libspdm_get_req_asym_signature_size(uint16_t req_base_asym_alg);
  * @param  cert               Pointer to the DER-encoded X509 certificate.
  * @param  cert_size          Size of the X509 certificate in bytes.
  * @param  context            Pointer to newly generated asymmetric context which contain the
- *                            retrieved public key component. Use libspdm_asym_free() function to
+ *                            retrieved public key component. Use libspdm_req_asym_free() function to
  *                            free the resource.
  *
  * @retval  true   Public key was retrieved successfully.
@@ -659,8 +655,6 @@ void libspdm_req_asym_free(uint16_t req_base_asym_alg, void *context);
  * @param  message_size       Size of the message in bytes.
  * @param  signature          Pointer to asymmetric signature to be verified.
  * @param  sig_size           Size of signature in bytes.
- * @param  endian             Endian to be tried. If both endians are selected,
- *                            the one actually used successfully is returned.
  *
  * @retval  true   Valid asymmetric signature.
  * @retval  false  Invalid asymmetric signature or invalid asymmetric context.
@@ -689,8 +683,6 @@ bool libspdm_req_asym_verify_ex(
  * @param  hash_size          Size of the hash in bytes.
  * @param  signature          Pointer to asymmetric signature to be verified.
  * @param  sig_size           Size of signature in bytes.
- * @param  endian             Endian to be tried. If both endians are selected,
- *                            the one actually used successfully is returned.
  *
  * @retval  true   Valid asymmetric signature.
  * @retval  false  Invalid asymmetric signature or invalid asymmetric context.
@@ -829,8 +821,8 @@ bool libspdm_dhe_generate_key(uint16_t dhe_named_group, void *context,
  *
  * @param  dhe_named_group       SPDM dhe_named_group
  * @param  context               Pointer to the DHE context.
- * @param  peer_public_key       Pointer to the peer's public key.
- * @param  peer_public_key_size  Size of peer's public key in bytes.
+ * @param  peer_public           Pointer to the peer's public key.
+ * @param  peer_public_size      Size of peer's public key in bytes.
  * @param  key                   Pointer to the buffer to receive generated key.
  * @param  key_size              On input, the size of key buffer in bytes.
  *                               On output, the size of data returned in key buffer in bytes.
@@ -934,7 +926,6 @@ bool libspdm_aead_decryption(const spdm_version_number_t secured_message_version
 /**
  * Generates a random byte stream of the specified size.
  *
- * @param  spdm_context  A pointer to the SPDM context.
  * @param  size          Size of random bytes to generate.
  * @param  rand          Pointer to buffer to receive random value.
  *
@@ -975,8 +966,7 @@ bool libspdm_x509_certificate_check(
  * @param[in]  base_asym_algo        SPDM base_asym_algo
  * @param[in]  base_hash_algo        SPDM base_hash_algo
  * @param[in]  is_requester          Is the function verifying a cert as a requester or responder.
- * @param[in]  is_device_cert_model  If true, the local endpoint uses the DeviceCert model.
- *                                   If false, the local endpoint uses the AliasCert model.
+ * @param[in]  cert_model            One of the SPDM_CERTIFICATE_INFO_CERT_MODEL_* macros.
  *
  * @retval  true   Success.
  * @retval  false  Certificate is not valid.
@@ -1025,14 +1015,14 @@ bool libspdm_is_root_certificate(const uint8_t *cert, size_t cert_size);
  * @param[in]      len               Size of buffer in bytes.
  * @param[out]     name_buffer       Buffer to contain the retrieved certificate
  *                                   SubjectAltName. At most name_buffer_size bytes will be
- *                                   written. Maybe NULL in order to determine the size
+ *                                   written. May be NULL in order to determine the size
  *                                   buffer needed.
  * @param[in,out]  name_buffer_size  The size in bytes of the name buffer on input,
  *                                   and the size of buffer returned name on output.
  *                                   If name_buffer is NULL then the amount of space needed
  *                                   in buffer (including the final null) is returned.
  * @param[out]     oid               OID of otherName
- * @param[in,out]  oid_size          The buffersize for required OID
+ * @param[in,out]  oid_size          The buffer size for required OID
  *
  * @retval true    Get the subjectAltName string successfully
  * @retval false   Get the subjectAltName string failed
@@ -1049,14 +1039,14 @@ bool libspdm_get_dmtf_subject_alt_name_from_bytes(
  * @param[in]      cert_size         Size of the X509 certificate in bytes.
  * @param[out]     name_buffer       Buffer to contain the retrieved certificate
  *                                   SubjectAltName. At most name_buffer_size bytes will be
- *                                   written. Maybe NULL in order to determine the size
+ *                                   written. May be NULL in order to determine the size
  *                                   buffer needed.
  * @param[in,out]  name_buffer_size  The size in bytes of the name buffer on input,
  *                                   and the size of buffer returned name on output.
  *                                   If name_buffer is NULL then the amount of space needed
  *                                   in buffer (including the final null) is returned.
  * @param[out]     oid               OID of otherName
- * @param[in,out]  oid_size          The buffersize for required OID
+ * @param[in,out]  oid_size          The buffer size for required OID
  *
  * @retval true    Get the subjectAltName string successfully
  * @retval false   Get the subjectAltName string failed
@@ -1185,7 +1175,7 @@ uint32_t libspdm_get_pqc_asym_signature_size(uint32_t pqc_asym_algo);
  * @param  cert            Pointer to the DER-encoded X509 certificate.
  * @param  cert_size       Size of the X509 certificate in bytes.
  * @param  context         Pointer to newly generated asymmetric context which contain the retrieved
- *                         public key component. Use libspdm_asym_free() function to free the
+ *                         public key component. Use libspdm_pqc_asym_free() function to free the
  *                         resource.
  *
  * @retval  true   Public key was retrieved successfully.
@@ -1205,9 +1195,9 @@ bool libspdm_pqc_asym_get_public_key_from_x509(uint32_t pqc_asym_algo,
  * @param  der_size        Size of the DER-encoded public key data in bytes.
  * @param  context         Pointer to newly generated asymmetric context which contain the
  *                         retrieved public key component.
- *                         Use libspdm_asym_free() function to free the resource.
+ *                         Use libspdm_pqc_asym_free() function to free the resource.
  *
- * @retval  true   Private key was retrieved successfully.
+ * @retval  true   Public key was retrieved successfully.
  * @retval  false  Invalid DER key data.
  **/
 bool libspdm_pqc_asym_get_public_key_from_der(uint32_t pqc_asym_algo,
@@ -1334,7 +1324,7 @@ uint32_t libspdm_get_req_pqc_asym_signature_size(uint32_t req_pqc_asym_alg);
  * @param  cert               Pointer to the DER-encoded X509 certificate.
  * @param  cert_size          Size of the X509 certificate in bytes.
  * @param  context            Pointer to newly generated asymmetric context which contain the
- *                            retrieved public key component. Use libspdm_asym_free() function to
+ *                            retrieved public key component. Use libspdm_req_pqc_asym_free() function to
  *                            free the resource.
  *
  * @retval  true   Public key was retrieved successfully.
@@ -1354,7 +1344,7 @@ bool libspdm_req_pqc_asym_get_public_key_from_x509(uint32_t req_pqc_asym_alg,
  * @param  der_size           Size of the DER-encoded public key data in bytes.
  * @param  context            Pointer to newly generated asymmetric context which contain the
  *                            retrieved public key component.
- *                            Use libspdm_req_asym_free() function to free the resource.
+ *                            Use libspdm_req_pqc_asym_free() function to free the resource.
  *
  * @retval  true   Public key was retrieved successfully.
  * @retval  false  Invalid DER key data.
@@ -1382,8 +1372,6 @@ void libspdm_req_pqc_asym_free(uint32_t req_pqc_asym_alg, void *context);
  * @param  message_size       Size of the message in bytes.
  * @param  signature          Pointer to asymmetric signature to be verified.
  * @param  sig_size           Size of signature in bytes.
- * @param  endian             Endian to be tried. If both endians are selected,
- *                            the one actually used successfully is returned.
  *
  * @retval  true   Valid asymmetric signature.
  * @retval  false  Invalid asymmetric signature or invalid asymmetric context.
@@ -1405,8 +1393,6 @@ bool libspdm_req_pqc_asym_verify(
  * @param  hash_size          Size of the hash in bytes.
  * @param  signature          Pointer to asymmetric signature to be verified.
  * @param  sig_size           Size of signature in bytes.
- * @param  endian             Endian to be tried. If both endians are selected,
- *                            the one actually used successfully is returned.
  *
  * @retval  true   Valid asymmetric signature.
  * @retval  false  Invalid asymmetric signature or invalid asymmetric context.
@@ -1480,20 +1466,20 @@ bool libspdm_req_pqc_asym_sign_hash(
 uint32_t libspdm_get_kem_encap_key_size(uint32_t kem_alg);
 
 /**
- * This function returns the SPDM KEM algorithm key size.
+ * This function returns the SPDM KEM algorithm cipher text size.
  *
  * @param  kem_alg  SPDM kem_alg
  *
- * @return SPDM KEM algorithm key size.
+ * @return SPDM KEM algorithm cipher text size.
  **/
 uint32_t libspdm_get_kem_cipher_text_size(uint32_t kem_alg);
 
 /**
- * This function returns the SPDM KEM algorithm key size.
+ * This function returns the SPDM KEM algorithm shared secret size.
  *
  * @param  kem_alg  SPDM kem_alg
  *
- * @return SPDM KEM algorithm key size.
+ * @return SPDM KEM algorithm shared secret size.
  **/
 uint32_t libspdm_get_kem_shared_secret_size(uint32_t kem_alg);
 
@@ -1521,14 +1507,14 @@ void libspdm_kem_free(uint32_t kem_alg, void *context);
  * Generates KEM public key, based upon negotiated KEM algorithm.
  *
  * @param  kem_alg           SPDM kem_alg
- * @param  context           Pointer to the DHE context.
+ * @param  context           Pointer to the KEM context.
  * @param  encap_key         Pointer to the buffer to receive generated public key.
- * @param  encap_key_size    On input, the size of public_key buffer in bytes.
- *                           On output, the size of data returned in public_key buffer in bytes.
+ * @param  encap_key_size    On input, the size of encap_key buffer in bytes.
+ *                           On output, the size of data returned in encap_key buffer in bytes.
  *
  * @retval true   KEM public key generation succeeded.
  * @retval false  KEM public key generation failed.
- * @retval false  public_key_size is not large enough.
+ * @retval false  encap_key_size is not large enough.
  **/
 bool libspdm_kem_generate_key(uint32_t kem_alg, void *context,
                               uint8_t *encap_key,
@@ -1550,7 +1536,7 @@ bool libspdm_kem_generate_key(uint32_t kem_alg, void *context,
  *
  * @retval true   KEM exchanged key generation succeeded.
  * @retval false  KEM exchanged key generation failed.
- * @retval false  key_size is not large enough.
+ * @retval false  cipher_text_size or shared_secret_size is not large enough.
  **/
 bool libspdm_kem_encapsulate(uint32_t kem_alg, void *context,
                              const uint8_t *peer_encap_key,
@@ -1573,7 +1559,7 @@ bool libspdm_kem_encapsulate(uint32_t kem_alg, void *context,
  *
  * @retval true   KEM exchanged key generation succeeded.
  * @retval false  KEM exchanged key generation failed.
- * @retval false  key_size is not large enough.
+ * @retval false  shared_secret_size is not large enough.
  **/
 bool libspdm_kem_decapsulate(uint32_t kem_alg, void *context,
                              const uint8_t *peer_cipher_text,
@@ -1659,7 +1645,7 @@ bool libspdm_generate_handshake_key (
  * @param export_master_secret_size      On input, the size of the export_master_secret buffer.
  *                                       On output, the actual size of the generated export master secret.
  *
- * @retval true   Handshake keys were generated successfully.
+ * @retval true   Data keys were generated successfully.
  * @retval false  An error occurred during key generation.
  */
 bool libspdm_generate_data_key (

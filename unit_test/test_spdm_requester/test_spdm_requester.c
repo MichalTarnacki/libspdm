@@ -31,6 +31,7 @@ int libspdm_req_get_measurements_error_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_MEL_CAP
 int libspdm_req_get_measurement_extension_log_test(void);
+int libspdm_req_get_measurement_extension_log_error_test(void);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MEL_CAP*/
 
 #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
@@ -83,6 +84,7 @@ int libspdm_req_encap_endpoint_info_error_test(void);
 
 int libspdm_req_set_certificate_test(void);
 int libspdm_req_get_csr_test(void);
+int libspdm_req_get_csr_error_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
 int libspdm_req_chunk_get_test(void);
@@ -170,6 +172,9 @@ int main(void)
 
     #if LIBSPDM_ENABLE_CAPABILITY_MEL_CAP
     if (libspdm_req_get_measurement_extension_log_test() != 0) {
+        return_value = 1;
+    }
+    if (libspdm_req_get_measurement_extension_log_error_test() != 0) {
         return_value = 1;
     }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_MEL_CAP */
@@ -294,6 +299,9 @@ int main(void)
 
     #if LIBSPDM_ENABLE_CAPABILITY_CSR_CAP
     if (libspdm_req_get_csr_test() != 0) {
+        return_value = 1;
+    }
+    if (libspdm_req_get_csr_error_test() != 0) {
         return_value = 1;
     }
     #endif /*LIBSPDM_ENABLE_CAPABILITY_CSR_CAP*/

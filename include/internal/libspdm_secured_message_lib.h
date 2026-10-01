@@ -231,13 +231,12 @@ bool libspdm_secured_message_dhe_generate_key(uint16_t dhe_named_group,
  *
  * @param  dhe_named_group                SPDM dhe_named_group
  * @param  dhe_context                   Pointer to the DHE context.
- * @param  peer_public_key                Pointer to the peer's public key.
- * @param  peer_public_key_size            size of peer's public key in bytes.
+ * @param  peer_public                    Pointer to the peer's public key.
+ * @param  peer_public_size                size of peer's public key in bytes.
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  *
  * @retval true   DHE exchanged key generation succeeded.
  * @retval false  DHE exchanged key generation failed.
- * @retval false  key_size is not large enough.
  **/
 bool libspdm_secured_message_dhe_compute_key(
     uint16_t dhe_named_group, void *dhe_context,
@@ -274,12 +273,12 @@ void libspdm_secured_message_kem_free(uint32_t kem_alg, void *kem_context);
  * @param  kem_alg                SPDM kem_alg
  * @param  kem_context                 Pointer to the KEM context.
  * @param  encap_key                   Pointer to the buffer to receive generated public key.
- * @param  encap_key_size              On input, the size of public_key buffer in bytes.
- *                                     On output, the size of data returned in public_key buffer in bytes.
+ * @param  encap_key_size              On input, the size of encap_key buffer in bytes.
+ *                                     On output, the size of data returned in encap_key buffer in bytes.
  *
  * @retval true   KEM public key generation succeeded.
  * @retval false  KEM public key generation failed.
- * @retval false  public_key_size is not large enough.
+ * @retval false  encap_key_size is not large enough.
  **/
 bool libspdm_secured_message_kem_generate_key(uint32_t kem_alg,
                                               void *kem_context,
@@ -299,9 +298,9 @@ bool libspdm_secured_message_kem_generate_key(uint32_t kem_alg,
  *                                       On output, the size of data returned in cipher_text buffer in bytes.
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  *
- * @retval true   DHE exchanged key generation succeeded.
- * @retval false  DHE exchanged key generation failed.
- * @retval false  key_size is not large enough.
+ * @retval true   KEM exchanged key generation succeeded.
+ * @retval false  KEM exchanged key generation failed.
+ * @retval false  cipher_text_size is not large enough.
  **/
 bool libspdm_secured_message_kem_encapsulate(
     uint32_t kem_alg, void *kem_context,
@@ -315,13 +314,12 @@ bool libspdm_secured_message_kem_encapsulate(
  *
  * @param  kem_alg                SPDM kem_alg
  * @param  kem_context                   Pointer to the kem context.
- * @param  peer_cipher_text              Pointer to the peer's public key.
- * @param  peer_cipher_text_size         Size of peer's public key in bytes.
+ * @param  peer_cipher_text              Pointer to the peer's cipher text.
+ * @param  peer_cipher_text_size         Size of peer's cipher text in bytes.
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  *
- * @retval true   DHE exchanged key generation succeeded.
- * @retval false  DHE exchanged key generation failed.
- * @retval false  key_size is not large enough.
+ * @retval true   KEM exchanged key generation succeeded.
+ * @retval false  KEM exchanged key generation failed.
  **/
 bool libspdm_secured_message_kem_decapsulate(
     uint32_t kem_alg, void *kem_context,
@@ -395,7 +393,7 @@ bool libspdm_hmac_final_with_request_finished_key(
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  * @param  data                         Pointer to the buffer containing the data to be HMACed.
  * @param  data_size                     size of data buffer in bytes.
- * @param  hash_value                    Pointer to a buffer that receives the HMAC value.
+ * @param  hmac_value                    Pointer to a buffer that receives the HMAC value.
  *
  * @retval true   HMAC computation succeeded.
  * @retval false  HMAC computation failed.
@@ -471,7 +469,7 @@ bool libspdm_hmac_final_with_response_finished_key(
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  * @param  data                         Pointer to the buffer containing the data to be HMACed.
  * @param  data_size                     size of data buffer in bytes.
- * @param  hash_value                    Pointer to a buffer that receives the HMAC value.
+ * @param  hmac_value                    Pointer to a buffer that receives the HMAC value.
  *
  * @retval true   HMAC computation succeeded.
  * @retval false  HMAC computation failed.
@@ -496,7 +494,7 @@ void libspdm_secured_message_set_last_spdm_error_struct(
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  * @param  th1_hash_data                  th1 hash
  *
- * @retval RETURN_SUCCESS  SPDM HandshakeKey for a session is generated.
+ * @retval true  SPDM HandshakeKey for a session is generated.
  **/
 bool libspdm_generate_session_handshake_key(void *spdm_secured_message_context,
                                             const uint8_t *th1_hash_data);
@@ -507,7 +505,7 @@ bool libspdm_generate_session_handshake_key(void *spdm_secured_message_context,
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  * @param  th2_hash_data                  th2 hash
  *
- * @retval RETURN_SUCCESS  SPDM DataKey for a session is generated.
+ * @retval true  SPDM DataKey for a session is generated.
  **/
 bool libspdm_generate_session_data_key(void *spdm_secured_message_context,
                                        const uint8_t *th2_hash_data);
@@ -518,7 +516,7 @@ bool libspdm_generate_session_data_key(void *spdm_secured_message_context,
  * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
  * @param  action                       Indicate of the key update action.
  *
- * @retval RETURN_SUCCESS  SPDM DataKey update is created.
+ * @retval true  SPDM DataKey update is created.
  **/
 bool libspdm_create_update_session_data_key(void *spdm_secured_message_context,
                                             libspdm_key_update_action_t action);
@@ -530,7 +528,7 @@ bool libspdm_create_update_session_data_key(void *spdm_secured_message_context,
  * @param  action                       Indicate of the key update action.
  * @param  use_new_key                    Indicate if the new key should be used.
  *
- * @retval RETURN_SUCCESS  SPDM DataKey update is activated.
+ * @retval true  SPDM DataKey update is activated.
  **/
 bool libspdm_activate_update_session_data_key(void *spdm_secured_message_context,
                                               libspdm_key_update_action_t action,

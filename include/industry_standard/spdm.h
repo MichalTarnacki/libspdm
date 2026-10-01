@@ -210,7 +210,7 @@ typedef struct {
     uint8_t ext_hash_count;
     uint8_t reserved3;
     uint8_t mel_specification;
-    /* Followed by dynamic arrays for ext_asym, ext_hash, and struct_tableif needed
+    /* Followed by dynamic arrays for ext_asym, ext_hash, and struct_table if needed
      * spdm_extended_algorithm_t ext_asym[ext_asym_count];
      * spdm_extended_algorithm_t ext_hash[ext_hash_count];
      * spdm_negotiate_algorithms_common_struct_table_t struct_table[
@@ -332,7 +332,7 @@ typedef struct {
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HANDSHAKE_IN_THE_CLEAR_CAP | \
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PUB_KEY_ID_CAP)
 
-/* SPDM GET_CAPABILITIES request flags (1.2) */
+/* SPDM GET_CAPABILITIES response flags (1.2) */
 #define SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHUNK_CAP 0x00020000
 #define SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ALIAS_CERT_CAP 0x00040000
 
@@ -376,7 +376,7 @@ typedef struct {
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_SET_KEY_PAIR_RESET_CAP | \
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_LARGE_RESP_CAP)
 
-/* SPDM GET_CAPBILITIES extended response flags (1.4) */
+/* SPDM GET_CAPABILITIES extended response flags (1.4) */
 #define SPDM_GET_CAPABILITIES_EXTENDED_RESPONSE_FLAGS_SLOT_MGMT_CAP 0x0001
 #define SPDM_GET_CAPABILITIES_EXTENDED_RESPONSE_FLAGS_14_MASK ( \
         SPDM_GET_CAPABILITIES_EXTENDED_RESPONSE_FLAGS_SLOT_MGMT_CAP)
@@ -867,7 +867,7 @@ typedef struct {
 typedef struct {
     uint8_t dmtf_spec_measurement_value_type;
     uint16_t dmtf_spec_measurement_value_size;
-    /*uint8_t                Dmtf_spec_measurement_value[dmtf_spec_measurement_value_size];*/
+    /*uint8_t                dmtf_spec_measurement_value[dmtf_spec_measurement_value_size];*/
 } spdm_measurement_block_dmtf_header_t;
 
 typedef struct {

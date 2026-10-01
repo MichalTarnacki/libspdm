@@ -29,7 +29,6 @@ bool libspdm_read_cached_last_csr_request(uint8_t **last_csr_request,
     size_t file_size;
     uint8_t *file_data;
 
-    file_data = NULL;
     *available_rsp_csr_tracking_tag = 0;
     char file[] = "cached_last_csr_x_request";
     /*change the file name, for example: cached_last_csr_1_request*/
@@ -38,13 +37,16 @@ bool libspdm_read_cached_last_csr_request(uint8_t **last_csr_request,
 
     for (index = 1; index <= SPDM_MAX_CSR_TRACKING_TAG; index++) {
         file[16] = (char)(index + '0');
-        libspdm_read_input_file(file, (void **)(&file_data), &file_size);
-        if (file_size == 0) {
-            *available_rsp_csr_tracking_tag |=  (1 << index);
+        file_data = NULL;
+        file_size = 0;
+        /* A missing or empty file means the tag is free. */
+        if (libspdm_read_input_file(file, (void **)(&file_data), &file_size)) {
+            free(file_data);
         } else {
-            if (file_data != NULL) {
-                free(file_data);
-            }
+            file_size = 0;
+        }
+        if (file_size == 0) {
+            *available_rsp_csr_tracking_tag |= (1 << index);
         }
     }
 
@@ -94,6 +96,11 @@ bool libspdm_read_cached_csr(uint8_t **csr_pointer, size_t *csr_len)
     file = "test_csr/cached.csr";
 
     res = libspdm_read_input_file(file, (void **)csr_pointer, csr_len);
+    if (res && (*csr_len == 0)) {
+        free(*csr_pointer);
+        *csr_pointer = NULL;
+        res = false;
+    }
     return res;
 }
 
@@ -138,12 +145,18 @@ bool libspdm_gen_csr_without_reset(uint32_t base_hash_algo, uint32_t base_asym_a
                 base_asym_algo, &cert, &cert_size);
         }
         if (!result) {
+            libspdm_zero_mem(prikey, prikey_size);
+            free(prikey);
             return false;
         }
 
+        x509_ca_cert = NULL;
         result = libspdm_x509_construct_certificate(cert, cert_size,
                                                     (uint8_t **)&x509_ca_cert);
         if ((x509_ca_cert == NULL) || (!result)) {
+            libspdm_zero_mem(prikey, prikey_size);
+            free(prikey);
+            free(cert);
             return false;
         }
 
@@ -157,6 +170,7 @@ bool libspdm_gen_csr_without_reset(uint32_t base_hash_algo, uint32_t base_asym_a
         if (!result) {
             libspdm_zero_mem(prikey, prikey_size);
             free(prikey);
+            free(cert);
             libspdm_x509_free(x509_ca_cert);
             return false;
         }
@@ -188,15 +202,6 @@ bool libspdm_gen_csr_without_reset(uint32_t base_hash_algo, uint32_t base_asym_a
     size_t cert_size;
 
     if (pqc_asym_algo != 0) {
-        result = libspdm_get_responder_pqc_private_key_from_raw_data(pqc_asym_algo, &context);
-    } else {
-        result = libspdm_get_responder_private_key_from_raw_data(base_asym_algo, &context);
-    }
-    if (!result) {
-        return false;
-    }
-
-    if (pqc_asym_algo != 0) {
         result = libspdm_read_responder_pqc_certificate(
             pqc_asym_algo, &cert, &cert_size);
     } else {
@@ -207,9 +212,22 @@ bool libspdm_gen_csr_without_reset(uint32_t base_hash_algo, uint32_t base_asym_a
         return false;
     }
 
+    x509_ca_cert = NULL;
     result = libspdm_x509_construct_certificate(cert, cert_size,
                                                 (uint8_t **)&x509_ca_cert);
     if ((x509_ca_cert == NULL) || (!result)) {
+        free(cert);
+        return false;
+    }
+
+    if (pqc_asym_algo != 0) {
+        result = libspdm_get_responder_pqc_private_key_from_raw_data(pqc_asym_algo, &context);
+    } else {
+        result = libspdm_get_responder_private_key_from_raw_data(base_asym_algo, &context);
+    }
+    if (!result) {
+        libspdm_x509_free(x509_ca_cert);
+        free(cert);
         return false;
     }
 
@@ -289,8 +307,7 @@ bool libspdm_gen_csr(
                 (cached_last_request_len == request_size) &&
                 (libspdm_consttime_is_mem_equal(cached_last_csr_request, request,
                                                 request_size)) &&
-                (libspdm_read_cached_csr(&cached_csr, csr_len)) &&
-                (*csr_len != 0)) {
+                (libspdm_read_cached_csr(&cached_csr, csr_len))) {
 
                 /*get and save cached csr*/
                 if (csr_buffer_size < *csr_len) {
@@ -375,9 +392,8 @@ bool libspdm_gen_csr(
             (cached_last_request_len == request_size) &&
             (libspdm_consttime_is_mem_equal(cached_last_csr_request, request,
                                             request_size)) &&
-            (libspdm_read_cached_csr(&cached_csr, csr_len)) &&
-            (*csr_len != 0) &&
-            (flag)) {
+            (flag) &&
+            (libspdm_read_cached_csr(&cached_csr, csr_len))) {
 
             /*get and save cached csr*/
             if (csr_buffer_size < *csr_len) {
