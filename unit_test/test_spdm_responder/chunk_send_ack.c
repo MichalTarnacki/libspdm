@@ -2203,6 +2203,99 @@ static void rsp_chunk_send_ack_case23(void** state)
 }
 #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
 
+/**
+ * Test 24: Last request has size larger than data transfer size and completes the large message.
+ **/
+static void rsp_chunk_send_ack_case24(void** state)
+{
+    libspdm_return_t status;
+
+    libspdm_test_context_t* spdm_test_context;
+    libspdm_context_t* spdm_context;
+
+    size_t request_size;
+    size_t response_size;
+
+    uint8_t request[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+
+    spdm_chunk_send_request_t* chunk_send_request;
+    spdm_chunk_send_ack_response_t* chunk_send_ack_response;
+    spdm_error_response_t* error_response;
+
+    void *scratch_buffer;
+    size_t scratch_buffer_size;
+    uint8_t *large_message;
+    size_t large_message_capacity;
+    size_t i;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 24;
+
+    libspdm_test_responder_chunk_send_ack_setup_algo_state(spdm_context);
+
+    libspdm_get_scratch_buffer(spdm_context, &scratch_buffer, &scratch_buffer_size);
+    large_message = (uint8_t *)scratch_buffer +
+                    libspdm_get_scratch_buffer_large_message_offset(spdm_context);
+    large_message_capacity = libspdm_get_scratch_buffer_large_message_capacity(spdm_context);
+    libspdm_set_mem(large_message, large_message_capacity, 0xa5);
+
+    libspdm_zero_mem(request, sizeof(request));
+    chunk_send_request = (spdm_chunk_send_request_t*) request;
+
+    chunk_send_request->header.spdm_version = SPDM_MESSAGE_VERSION_12;
+    chunk_send_request->header.request_response_code = SPDM_CHUNK_SEND;
+    chunk_send_request->header.param1 = SPDM_CHUNK_SEND_REQUEST_ATTRIBUTE_LAST_CHUNK;
+    chunk_send_request->header.param2 = (uint8_t) spdm_test_context->case_id; /* chunk_handle */
+    chunk_send_request->chunk_seq_no = 1;
+    chunk_send_request->chunk_size =
+        spdm_context->local_context.capability.data_transfer_size
+        - sizeof(spdm_chunk_send_request_t)
+        + 1; /* Request size too large */
+
+    request_size = sizeof(spdm_chunk_send_request_t)
+                   + chunk_send_request->chunk_size;
+
+    spdm_context->chunk_context.send.chunk_in_use = true;
+    spdm_context->chunk_context.send.chunk_handle = (uint8_t) spdm_test_context->case_id;
+    spdm_context->chunk_context.send.chunk_seq_no = 0;
+    spdm_context->chunk_context.send.large_message = large_message;
+    spdm_context->chunk_context.send.large_message_capacity = large_message_capacity;
+    spdm_context->chunk_context.send.large_message_size = large_message_capacity;
+    /* The oversized last chunk exactly completes the large message. */
+    spdm_context->chunk_context.send.chunk_bytes_transferred =
+        large_message_capacity - chunk_send_request->chunk_size;
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_chunk_send(
+        spdm_context,
+        request_size, request,
+        &response_size, response);
+
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_true(response_size == sizeof(spdm_chunk_send_ack_response_t)
+                + sizeof(spdm_error_response_t));
+
+    chunk_send_ack_response = (spdm_chunk_send_ack_response_t*) response;
+    assert_int_equal(chunk_send_ack_response->header.param1,
+                     SPDM_CHUNK_SEND_ACK_RESPONSE_ATTRIBUTE_EARLY_ERROR_DETECTED);
+
+    error_response = (spdm_error_response_t*) (chunk_send_ack_response + 1);
+    assert_int_equal(error_response->header.spdm_version, SPDM_MESSAGE_VERSION_12);
+    assert_int_equal(error_response->header.request_response_code, SPDM_ERROR);
+    assert_int_equal(error_response->header.param1, SPDM_ERROR_CODE_INVALID_REQUEST);
+    assert_int_equal(error_response->header.param2, 0);
+
+    assert_false(spdm_context->chunk_context.send.chunk_in_use);
+    assert_null(spdm_context->chunk_context.send.large_message);
+    for (i = 0; i < large_message_capacity; i++) {
+        assert_int_equal(large_message[i], 0);
+    }
+
+    libspdm_test_responder_chunk_send_ack_reset_send_state(spdm_context);
+}
+
 int libspdm_rsp_chunk_send_ack_test(void)
 {
     const struct CMUnitTest test_cases[] = {
@@ -2260,6 +2353,8 @@ int libspdm_rsp_chunk_send_ack_test(void)
         /* Assembled request is rejected when it does not advance the encapsulated flow */
         cmocka_unit_test(rsp_chunk_send_ack_case23),
         #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+        /* Last request has size larger than data transfer size. */
+        cmocka_unit_test(rsp_chunk_send_ack_case24),
     };
 
     libspdm_test_context_t test_context = {

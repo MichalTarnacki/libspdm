@@ -168,6 +168,7 @@ libspdm_return_t libspdm_get_response_chunk_send(libspdm_context_t *spdm_context
 
         if (spdm_request->header.param2 != send_info->chunk_handle
             || spdm_request->chunk_size > calc_max_chunk_size
+            || (uint32_t)request_size > spdm_context->local_context.capability.data_transfer_size
             || spdm_request->chunk_size + send_info->chunk_bytes_transferred
             > send_info->large_message_size) {
             status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
@@ -180,9 +181,7 @@ libspdm_return_t libspdm_get_response_chunk_send(libspdm_context_t *spdm_context
                         > send_info->large_message_size)
                        || (spdm_request->chunk_size
                            < SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12
-                           - sizeof(spdm_chunk_send_request_t))
-                       || ((uint32_t) request_size
-                           > spdm_context->local_context.capability.data_transfer_size))) {
+                           - sizeof(spdm_chunk_send_request_t)))) {
             status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         } else if (chunk_seq_no == 0) {
             /* Chunk seq no wrapped */
