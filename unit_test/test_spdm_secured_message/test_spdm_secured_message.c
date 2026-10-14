@@ -8,6 +8,8 @@
 #include "library/spdm_common_lib.h"
 
 extern int libspdm_secured_message_encode_decode_test_main(void);
+extern int libspdm_secured_message_key_update_test_main(void);
+extern int libspdm_secured_message_context_data_test_main(void);
 
 int main(void)
 {
@@ -18,6 +20,14 @@ int main(void)
         return_value = 1;
     }
 #endif
+#if LIBSPDM_AEAD_AES_256_GCM_SUPPORT && LIBSPDM_SHA256_SUPPORT
+    if (libspdm_secured_message_key_update_test_main() != 0) {
+        return_value = 1;
+    }
+#endif
+    if (libspdm_secured_message_context_data_test_main() != 0) {
+        return_value = 1;
+    }
 
     return return_value;
 }

@@ -46,7 +46,7 @@ libspdm_return_t libspdm_get_encap_request_get_endpoint_info(
         return LIBSPDM_STATUS_INVALID_STATE_LOCAL;
     }
 
-    encap_context->last_encap_request_size = 0;
+    encap_context->has_last_encap_request = false;
 
     /* The endpoint information is written here once the ENDPOINT_INFO response is verified. */
     encap_context->payload_buffer = ep_info;
@@ -110,7 +110,6 @@ libspdm_return_t libspdm_get_encap_request_get_endpoint_info(
 
         spdm_nonce = (uint8_t *)(spdm_request + 1);
         if (!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_nonce)) {
-            libspdm_release_sender_buffer (spdm_context);
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "Encap RequesterNonce - "));
@@ -138,7 +137,7 @@ libspdm_return_t libspdm_get_encap_request_get_endpoint_info(
     libspdm_copy_mem(&encap_context->last_encap_request_header,
                      sizeof(encap_context->last_encap_request_header),
                      &spdm_request->header, sizeof(spdm_message_header_t));
-    encap_context->last_encap_request_size = *encap_request_size;
+    encap_context->has_last_encap_request = true;
 
     return LIBSPDM_STATUS_SUCCESS;
 }

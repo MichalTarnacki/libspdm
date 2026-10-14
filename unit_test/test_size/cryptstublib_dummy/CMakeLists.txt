@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_library(cryptstublib_dummy STATIC "")
 
@@ -12,7 +12,3 @@ target_sources(cryptstublib_dummy
     PRIVATE
         rand_dummy.c
 )
-
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    target_compile_options(cryptstublib_dummy PRIVATE -Wno-incompatible-pointer-types -Wno-pointer-sign)
-endif()

@@ -25,9 +25,38 @@ extern "C" {
  **/
 libspdm_return_t libspdm_init_connection(void *spdm_context, bool get_version_only);
 
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+/**
+ * This function retrieves the supported algorithms from the responder.
+ * It sends the GET_VERSION and GET_CAPABILITIES requests, where GET_CAPABILITIES.Param1[0] is set.
+ * If the Responder supports this extended capability, the Responder will include the Supported
+ * Algorithms Block in its CAPABILITIES response.
+ *
+ * @param spdm_context                          A pointer to the SPDM context.
+ * @param responder_supported_algorithms_length  On input, indicates the size in bytes of the provided buffer.
+ *                                              The buffer must be large enough to hold the supported algorithms block.
+ *                                              On output, the size in bytes of the supported algorithms data.
+ * @param responder_supported_algorithms_buffer  A pointer to a destination buffer to store the supported algorithms.
+ *                                              Must not be NULL. The buffer must be large enough to hold the supported algorithms data.
+ * @param spdm_version                          A pointer to store the SPDM version used for the request.
+ *
+ * @retval LIBSPDM_STATUS_SUCCESS                The supported algorithms were successfully retrieved.
+ * @retval LIBSPDM_STATUS_SEND_FAIL              Unable to send the request to the device.
+ * @retval LIBSPDM_STATUS_RECEIVE_FAIL           Unable to receive the response from the device.
+ * @retval LIBSPDM_STATUS_UNSUPPORTED_CAP        The Requester or the device does not support SPDM 1.3 or later.
+ *
+ * @note   The buffer must be large enough to hold the supported algorithms block.
+ *         The function will assert if responder_supported_algorithms_buffer is NULL.
+ */
+libspdm_return_t libspdm_get_supported_algorithms(void *spdm_context,
+                                                  size_t *responder_supported_algorithms_length,
+                                                  void *responder_supported_algorithms_buffer,
+                                                  uint8_t *spdm_version);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
 #if LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT
 /**
- * This function sends GET_DIGEST to get all digest of the certificate chains from device.
+ * This function sends GET_DIGESTS to get all digests of the certificate chains from device.
  *
  * TotalDigestSize = sizeof(digest) * count in slot_mask
  *
@@ -194,7 +223,7 @@ libspdm_return_t libspdm_challenge(void *spdm_context, void *reserved,
  * @param  responder_nonce        A buffer to hold the responder nonce (32 bytes), if not NULL.
  * @param  opaque_data            A buffer to hold the responder opaque data, if not NULL.
  * @param  opaque_data_size       On input, the size of the opaque data buffer.
- *                                Responder opaque data should be less than 1024 bytes.
+ *                                Responder opaque data is at most 1024 bytes.
  *                                On output, the size of the opaque data.
  **/
 libspdm_return_t libspdm_challenge_ex(void *spdm_context, void *reserved,
@@ -229,7 +258,7 @@ libspdm_return_t libspdm_challenge_ex(void *spdm_context, void *reserved,
  * @param  responder_nonce        A buffer to hold the responder nonce (32 bytes), if not NULL.
  * @param  opaque_data            A buffer to hold the responder opaque data, if not NULL.
  * @param  opaque_data_size       On input, the size of the opaque data buffer.
- *                                Responder opaque data should be less than 1024 bytes.
+ *                                Responder opaque data is at most 1024 bytes.
  *                                On output, the size of the opaque data.
  **/
 libspdm_return_t libspdm_challenge_ex2(void *spdm_context, void *reserved,
@@ -247,7 +276,7 @@ libspdm_return_t libspdm_challenge_ex2(void *spdm_context, void *reserved,
 
 #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
 /**
- * This function sends GET_MEASUREMENT
+ * This function sends GET_MEASUREMENTS
  * to get measurement from the device.
  *
  * If the signature is requested, this function verifies the signature of the measurement.
@@ -275,7 +304,7 @@ libspdm_return_t libspdm_get_measurement(void *spdm_context, const uint32_t *ses
                                          void *measurement_record);
 
 /**
- * This function sends GET_MEASUREMENT to get measurement from the device.
+ * This function sends GET_MEASUREMENTS to get measurements from the device.
  *
  * If the signature is requested, this function verifies the signature of the measurement.
  *
@@ -296,7 +325,7 @@ libspdm_return_t libspdm_get_measurement(void *spdm_context, const uint32_t *ses
  * @param  responder_nonce            A buffer to hold the responder nonce (32 bytes), if not NULL.
  * @param  opaque_data                A buffer to hold the responder opaque data, if not NULL.
  * @param  opaque_data_size           On input, the size of the opaque data buffer.
- *                                    Responder opaque data should be less than 1024 bytes.
+ *                                    Responder opaque data is at most 1024 bytes.
  *                                    On output, the size of the opaque data.
  **/
 libspdm_return_t libspdm_get_measurement_ex(void *spdm_context, const uint32_t *session_id,
@@ -314,7 +343,7 @@ libspdm_return_t libspdm_get_measurement_ex(void *spdm_context, const uint32_t *
                                             size_t *opaque_data_size);
 
 /**
- * This function sends GET_MEASUREMENT to get measurement from the device.
+ * This function sends GET_MEASUREMENTS to get measurements from the device.
  *
  * If the signature is requested, this function verifies the signature of the measurement.
  *
@@ -337,7 +366,7 @@ libspdm_return_t libspdm_get_measurement_ex(void *spdm_context, const uint32_t *
  * @param  responder_nonce            A buffer to hold the responder nonce (32 bytes), if not NULL.
  * @param  opaque_data                A buffer to hold the responder opaque data, if not NULL.
  * @param  opaque_data_size           On input, the size of the opaque data buffer.
- *                                    Responder opaque data should be less than 1024 bytes.
+ *                                    Responder opaque data is at most 1024 bytes.
  *                                    On output, the size of the opaque data.
  **/
 libspdm_return_t libspdm_get_measurement_ex2(void *spdm_context, const uint32_t *session_id,
@@ -361,7 +390,7 @@ libspdm_return_t libspdm_get_measurement_ex2(void *spdm_context, const uint32_t 
  * This function sends GET_ENDPOINT_INFO from the device *
  *
  *
- * @param  context                    A pointer to the SPDM context.
+ * @param  spdm_context               A pointer to the SPDM context.
  * @param  session_id                 Indicates if it is a secured message protected via SPDM session.
  *                                    If session_id is NULL, it is a normal message.
  *                                    If session_id is not NULL, it is a secured message.
@@ -449,13 +478,13 @@ libspdm_return_t libspdm_get_key_pair_info(void *spdm_context, const uint32_t *s
 
 #if LIBSPDM_ENABLE_CAPABILITY_SET_KEY_PAIR_INFO_CAP
 /**
- * This function sends GET_KEY_PAIR_INFO to get key pair info from device.
+ * This function sends SET_KEY_PAIR_INFO to set key pair info on the device.
  *
  * @param  spdm_context                 A pointer to the SPDM context.
  * @param  session_id                   Indicates if it is a secured message protected via SPDM session.
  *                                      If session_id is NULL, it is a normal message.
  *                                      If session_id is not NULL, it is a secured message.
- * @param  key_pair_id                  Indicate which key pair ID's information to retrieve.
+ * @param  key_pair_id                  Indicate which key pair ID's information to set.
  * @param  operation                    Set key pair info operation: change/erase/generate.
  * @param  desired_key_usage            Indicate the desired key usage for the requested key pair ID.
  * @param  desired_asym_algo            Indicate the desired asymmetric algorithm for the requested key pair ID.
@@ -503,33 +532,6 @@ libspdm_return_t libspdm_start_session(void *spdm_context, bool use_psk,
                                        void *measurement_hash);
 
 /**
- * This function retrieves the supported algorithms from the responder.
- * It sends the GET_VERSION and GET_CAPABILITIES requests, where GET_CAPABILITIES.Param1[0] is set.
- * If the Responder supports this extended capability, the Responder will include the Supported
- * Algorithms Block in its CAPABILITIES response.
- *
- * @param spdm_context                          A pointer to the SPDM context.
- * @param responder_supported_algorithms_length  On input, indicates the size in bytes of the provided buffer.
- *                                              The buffer must be large enough to hold the supported algorithms block.
- *                                              On output, the size in bytes of the supported algorithms data.
- * @param responder_supported_algorithms_buffer  A pointer to a destination buffer to store the supported algorithms.
- *                                              Must not be NULL. The buffer must be large enough to hold the supported algorithms data.
- * @param spdm_version                          A pointer to store the SPDM version used for the request.
- *
- * @retval RETURN_SUCCESS                        The supported algorithms were successfully retrieved.
- * @retval RETURN_DEVICE_ERROR                   A device error occurs when communicates with the device.
- * @retval RETURN_UNSUPPORTED                    The operation is not supported by the device.
- * @retval RETURN_SECURITY_VIOLATION             Any verification fails.
- *
- * @note   The buffer must be large enough to hold the supported algorithms block.
- *         The function will assert if responder_supported_algorithms_buffer is NULL.
- */
-libspdm_return_t libspdm_get_supported_algorithms(void *spdm_context,
-                                                  size_t *responder_supported_algorithms_length,
-                                                  void *responder_supported_algorithms_buffer,
-                                                  uint8_t *spdm_version);
-
-/**
  * This function sends KEY_EXCHANGE or PSK_EXCHANGE to start an SPDM Session.
  *
  * If encapsulated mutual authentication is requested from the responder,
@@ -557,8 +559,8 @@ libspdm_return_t libspdm_get_supported_algorithms(void *spdm_context,
  *                                    If use_psk is false, it must be 32 bytes.
  *                                    If use_psk is true, it means the PSK context and must be 32 bytes at least.
  * @param  responder_random           A buffer to hold the responder random, if not NULL.
- * @param  responder_random_size      On input, the size of requester_random buffer.
- *                                    On output, the size of data returned in requester_random buffer.
+ * @param  responder_random_size      On input, the size of responder_random buffer.
+ *                                    On output, the size of data returned in responder_random buffer.
  *                                    If use_psk is false, it must be 32 bytes.
  *                                    If use_psk is true, it means the PSK context. It could be 0 if device does not support context.
  * @param  requester_opaque_data      A buffer to hold the requester opaque data, if not NULL.
@@ -567,7 +569,7 @@ libspdm_return_t libspdm_get_supported_algorithms(void *spdm_context,
  * @param  requester_opaque_data_size The size of the opaque data, if requester_opaque_data is not NULL.
  * @param  responder_opaque_data      A buffer to hold the responder opaque data, if not NULL.
  * @param  responder_opaque_data_size On input, the size of the opaque data buffer.
- *                                    Opaque data should be less than 1024 bytes.
+ *                                    Opaque data is at most 1024 bytes.
  *                                    On output, the size of the opaque data.
  **/
 libspdm_return_t libspdm_start_session_exchange(void *spdm_context, bool use_psk,
@@ -604,7 +606,7 @@ libspdm_return_t libspdm_start_session_exchange(void *spdm_context, bool use_psk
  * @param  responder_opaque_data      A buffer to hold the responder opaque data, if not NULL.
  *                                    This parameter is only used for SPDM 1.4 and later
  * @param  responder_opaque_data_size On input, the size of the opaque data buffer.
- *                                    Opaque data should be less than 1024 bytes.
+ *                                    Opaque data is at most 1024 bytes.
  *                                    On output, the size of the opaque data.
  *                                    This parameter is only used for SPDM 1.4 and later
  */
@@ -733,6 +735,7 @@ libspdm_return_t libspdm_send_receive_spdm_data(void *spdm_context,
                                                 void *response, size_t *response_size);
 
 #if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+#if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
 /**
  * This function sends HEARTBEAT
  * to an SPDM Session.
@@ -741,6 +744,7 @@ libspdm_return_t libspdm_send_receive_spdm_data(void *spdm_context,
  * @param  session_id    The session ID of the session.
  **/
 libspdm_return_t libspdm_heartbeat(void *spdm_context, uint32_t session_id);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
 
 /**
  * This function sends KEY_UPDATE
@@ -760,7 +764,7 @@ libspdm_return_t libspdm_key_update(void *spdm_context, uint32_t session_id, boo
  * This function executes a series of SPDM encapsulated requests and receives SPDM encapsulated responses.
  *
  * This function starts with the first encapsulated request (such as GET_ENCAPSULATED_REQUEST)
- * and ends with last encapsulated response (such as RESPONSE_PAYLOAD_TYPE_ABSENT or RESPONSE_PAYLOAD_TYPE_SLOT_NUMBER).
+ * and ends with last encapsulated response (such as RESPONSE_PAYLOAD_TYPE_ABSENT or RESPONSE_PAYLOAD_TYPE_REQ_SLOT_NUMBER).
  *
  * @param  spdm_context  A pointer to the SPDM context.
  * @param  session_id    Indicate if the encapsulated request is a secured message.
@@ -795,7 +799,7 @@ typedef libspdm_return_t (*libspdm_get_encap_response_func)(
  * this function will be invoked.
  *
  * @param  spdm_context             A pointer to the SPDM context.
- * @param  get_encap_response_func  The function to process the encapsuled message.
+ * @param  get_encap_response_func  The function to process the encapsulated message.
  **/
 void libspdm_register_get_encap_response_func(void *spdm_context,
                                               const libspdm_get_encap_response_func
@@ -846,7 +850,7 @@ libspdm_return_t libspdm_generate_encap_extended_error_response(
 /**
  * This function sends GET_CSR to get CSR from the device.
  *
- * @param[in]  context                A pointer to the SPDM context.
+ * @param[in]  spdm_context           A pointer to the SPDM context.
  * @param[in]  session_id             Indicates if it is a secured message protected via SPDM session.
  *                                    If session_id is NULL, it is a normal message.
  *                                    If session_id is NOT NULL, it is a secured message.
@@ -877,9 +881,9 @@ libspdm_return_t libspdm_get_csr(void *spdm_context,
 #if LIBSPDM_ENABLE_CAPABILITY_SET_CERT_CAP
 /**
  * This function try to send SET_CERTIFICATE
- * to set certificate from the device.
+ * to set certificate on the device.
  *
- * @param  context          A pointer to the SPDM context.
+ * @param  spdm_context     A pointer to the SPDM context.
  * @param  session_id       Indicates if it is a secured message protected via SPDM session.
  *                          If session_id is NULL, it is a normal message.
  *                          If session_id is NOT NULL, it is a secured message.
@@ -896,7 +900,7 @@ libspdm_return_t libspdm_set_certificate(void *spdm_context,
  * This function try to send SET_CERTIFICATE
  * to set certificate or erase certificate from the device.
  *
- * @param  context          A pointer to the SPDM context.
+ * @param  spdm_context     A pointer to the SPDM context.
  * @param  session_id       Indicates if it is a secured message protected via SPDM session.
  *                          If session_id is NULL, it is a normal message.
  *                          If session_id is NOT NULL, it is a secured message.
@@ -993,7 +997,7 @@ libspdm_return_t libspdm_send_event(void *spdm_context,
  * This function initializes message logging. The caller must provide a buffer and the buffer's
  * size.
  *
- * @param  context          A pointer to the SPDM context.
+ * @param  spdm_context     A pointer to the SPDM context.
  * @param  msg_buffer       A pointer to a caller-provided buffer.
  * @param  msg_buffer_size  The size of the buffer in bytes. It must be greater than zero.
  **/
@@ -1002,16 +1006,16 @@ void libspdm_init_msg_log (void *spdm_context, void *msg_buffer, size_t msg_buff
 /**
  * This function sets the mode in which the message logger operates.
  *
- * @param  context A pointer to the SPDM context.
- * @param  mode    A bitmask specifying the mode in which the message logger operates.
- *                 LIBSPDM_MSG_LOG_MODE_ENABLE - when set the message logger is active.
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  mode          A bitmask specifying the mode in which the message logger operates.
+ *                       LIBSPDM_MSG_LOG_MODE_ENABLE - when set the message logger is active.
  */
 void libspdm_set_msg_log_mode (void *spdm_context, uint32_t mode);
 
 /**
  * This function returns the status of the message logger.
  *
- * @param  context  A pointer to the SPDM context.
+ * @param  spdm_context  A pointer to the SPDM context.
  *
  * @return uint32_t A bitmask giving the status of the message logger.
  *                  LIBSPDM_MSG_LOG_STATUS_BUFFER_FULL - if set the message logging buffer has
@@ -1022,7 +1026,7 @@ uint32_t libspdm_get_msg_log_status (void *spdm_context);
 /**
  * This function returns the size of the message log.
  *
- * @param  context  A pointer to the SPDM context.
+ * @param  spdm_context  A pointer to the SPDM context.
  * @return size_t   The size of the message log in bytes.
  */
 size_t libspdm_get_msg_log_size (void *spdm_context);
@@ -1031,7 +1035,7 @@ size_t libspdm_get_msg_log_size (void *spdm_context);
  * This function resets the message log while retaining the message buffer and maximum size given in
  * libspdm_init_msg_log.
  *
- * @param context  A pointer to the SPDM context.
+ * @param spdm_context  A pointer to the SPDM context.
  */
 void libspdm_reset_msg_log (void *spdm_context);
 #endif /* LIBSPDM_ENABLE_MSG_LOG */

@@ -6,7 +6,7 @@ Refer to [FIPS support](fips.md) for FIPS-related enabling.
 
 ## SPDM Requester
 
-Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-emu/blob/main/spdm_emu/spdm_requester_emu/spdm_requester_spdm.c)
+Refer to spdm_client_init() in [spdm_requester_spdm.c](https://github.com/DMTF/spdm-emu/blob/main/spdm_emu/spdm_requester_emu/spdm_requester_spdm.c)
 
 0. Choose proper SPDM libraries.
 
@@ -31,7 +31,7 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
 
    0.4, choose required SPDM transport libs, such as [spdm_transport_mctp_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_mctp_lib.h) and [spdm_transport_pcidoe_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_pcidoe_lib.h)
 
-   0.5, implement required SPDM device IO functions - `libspdm_device_send_message_func` and `libspdm_device_receive_message_func` according to [spdm_common_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_common_lib.h). The `timeout`, in microseconds (us) units, is for the execution of the message. For a Requester, the timeout value to send a message is `RTT` and the timeout value to receive a message is `T1 = RTT + ST1` or `T2 = RTT + CT = RTT + 2^ct_exponent`.
+   0.5, implement required SPDM device IO functions - `libspdm_device_send_message_func` and `libspdm_device_receive_message_func` according to [spdm_common_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_common_lib.h). The `timeout`, in microseconds (us) units, is for the execution of the message. For a Requester, the timeout value to send a message is `RTT` and the timeout value to receive a message is `T1 = RTT + ST1` or `T2 = RTT + CT = RTT + 2^ct_exponent`. Also implement the device buffer functions `libspdm_device_acquire_sender_buffer_func`, `libspdm_device_release_sender_buffer_func`, `libspdm_device_acquire_receiver_buffer_func`, and `libspdm_device_release_receiver_buffer_func`.
 
 1. Initialize SPDM context
 
@@ -46,16 +46,18 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
 
    The location of session keys can be separated from spdm_context if desired.
    Each session holds keys in a secured context, and the location of each can be
-   directly specified.
+   directly specified. There must be one secured context, of at least `spdm_secured_context_size`
+   bytes, for each of the `LIBSPDM_MAX_SESSION_COUNT` sessions.
 
    ```C
    spdm_secured_context_size = libspdm_secured_message_get_context_size();
    spdm_secured_contexts[0] = (void *)pointer_to_secured_memory_0;
    spdm_secured_contexts[1] = (void *)pointer_to_secured_memory_1;
    [...]
-   spdm_secured_contexts[num_sessions] = (void *)pointer_to_secured_memory_num_sessions;
+   spdm_secured_contexts[LIBSPDM_MAX_SESSION_COUNT - 1] = (void *)pointer_to_secured_memory_last;
    spdm_context = (void *)malloc (libspdm_get_context_size_without_secured_context());
-   libspdm_init_context_with_secured_context(spdm_context, spdm_secured_contexts, num_sessions);
+   libspdm_init_context_with_secured_context(spdm_context, spdm_secured_contexts,
+                                             LIBSPDM_MAX_SESSION_COUNT);
    ```
 
    Optionally, the Integrator may use `LIBSPDM_CONTEXT_SIZE_ALL`, or `LIBSPDM_CONTEXT_SIZE_WITHOUT_SECURED_CONTEXT` together with `LIBSPDM_SECURED_MESSAGE_CONTEXT_SIZE`, to preallocate the context buffer from a fixed memory region. In this case, the Integrator needs to include the following internal header files.
@@ -67,7 +69,7 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
    1.2, register the device io functions, transport layer functions, and device buffer functions, then set up the scratch buffer.
    The libspdm provides the default [spdm_transport_mctp_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_mctp_lib.h) and [spdm_transport_pcidoe_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_pcidoe_lib.h).
    The SPDM device driver need provide device IO send/receive function.
-   The final sent and received message will be in the sender buffer and receiver buffer.
+   [Buffer Configuration](#buffer-configuration) describes how to choose `LIBSPDM_MAX_SPDM_MSG_SIZE`, `LIBSPDM_SENDER_BUFFER_SIZE`, and `LIBSPDM_RECEIVER_BUFFER_SIZE`.
    Refer to [design](https://github.com/DMTF/libspdm/blob/main/doc/design.md) for the usage of those APIs.
 
    ```C
@@ -92,7 +94,9 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
      spdm_device_release_receiver_buffer);
    ```
 
-   Set up the scratch buffer last. Its required size is derived from the `max_spdm_msg_size` that `libspdm_register_transport_layer_func()` supplies. The scratch buffer may include the decrypted secured message.
+   Set up the scratch buffer last. Its required size is derived from the `max_spdm_msg_size`,
+   `transport_header_size`, and `transport_tail_size` that `libspdm_register_transport_layer_func()`
+   supplies. The scratch buffer may include the decrypted secured message.
 
    ```C
    scratch_buffer_size = libspdm_get_sizeof_required_scratch_buffer(spdm_context);
@@ -100,7 +104,7 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
    libspdm_set_scratch_buffer (spdm_context, scratch_buffer, scratch_buffer_size);
    ```
 
-   Optionally, the Integrator can calculate the `scratch_buffer_size` according to the `max_spdm_msg_size` value input to `libspdm_register_transport_layer_func()`, according to `libspdm_get_scratch_buffer_capacity()` API implementation in [libspdm_com_context_data.c](https://github.com/DMTF/libspdm/blob/main/library/spdm_common_lib/libspdm_com_context_data.c). Note that the size requirement depends on `LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP` and `LIBSPDM_RESPOND_IF_READY_SUPPORT`.
+   To allocate the scratch buffer statically, see [Scratch Buffer](#scratch-buffer) for its size.
 
    1.3, set capabilities and choose algorithms, based upon need.
    ```C
@@ -152,27 +156,28 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
 
 2. Create connection with the Responder
 
-   Send GET_VERSION, GET_CAPABILITIES and NEGOTIATE_ALGORITHM.
+   Send `GET_VERSION`, `GET_CAPABILITIES` and `NEGOTIATE_ALGORITHMS`.
    ```C
    libspdm_init_connection (spdm_context, false);
    ```
 
 3. Authentication the Responder
 
-   Send GET_DIGESTS, GET_CERTIFICATES and CHALLENGE.
+   Send `GET_DIGESTS`, `GET_CERTIFICATE` and `CHALLENGE`. The session ID is `NULL` because these
+   messages are sent outside a session.
    ```C
-   libspdm_get_digest (spdm_context, session_id, slot_mask, total_digest_buffer);
-   libspdm_get_certificate (spdm_context, session_id, slot_id, &cert_chain_size, cert_chain);
+   libspdm_get_digest (spdm_context, NULL, &slot_mask, total_digest_buffer);
+   libspdm_get_certificate (spdm_context, NULL, slot_id, &cert_chain_size, cert_chain);
    libspdm_challenge (spdm_context, NULL, slot_id, measurement_hash_type, measurement_hash, &slot_mask);
    ```
 
 4. Get the measurement from the Responder
 
-   4.1, Send GET_MEASUREMENT to query the total number of measurements available.
+   4.1, Send `GET_MEASUREMENTS` to query the total number of measurements available.
    ```C
    libspdm_get_measurement (
        spdm_context,
-       session_id,
+       NULL,
        request_attribute,
        SPDM_GET_MEASUREMENTS_REQUEST_MEASUREMENT_OPERATION_TOTAL_NUMBER_OF_MEASUREMENTS,
        slot_id,
@@ -182,15 +187,19 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
        NULL);
    ```
 
-   4.2, Send GET_MEASUREMENT to get measurement one by one.
+   4.2, Send `GET_MEASUREMENTS` to get measurement one by one. Each call sets `number_of_blocks` to
+   the number of blocks in its response, and `measurement_record_length` is the size of
+   `measurement_record` on input, so save the total first and reset the length before each call.
    ```C
-   for (index = 1; index <= number_of_blocks; index++) {
-     if (index == number_of_blocks) {
+   total_number_of_blocks = number_of_blocks;
+   for (index = 1; index <= total_number_of_blocks; index++) {
+     if (index == total_number_of_blocks) {
        request_attribute = SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE;
      }
+     measurement_record_length = sizeof(measurement_record);
      libspdm_get_measurement (
        spdm_context,
-       session_id,
+       NULL,
        request_attribute,
        index,
        slot_id,
@@ -203,7 +212,7 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
 
 5. Manage an SPDM session
 
-   5.1, Without PSK, send KEY_EXCHANGE/FINISH to create a session.
+   5.1, Without PSK, send `KEY_EXCHANGE`/`FINISH` to create a session.
    ```C
    libspdm_start_session (
        spdm_context,
@@ -217,7 +226,7 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
        measurement_hash);
    ```
 
-   Or with PSK, send PSK_EXCHANGE/PSK_FINISH to create a session.
+   Or with PSK, send `PSK_EXCHANGE`/`PSK_FINISH` to create a session.
    ```C
    libspdm_start_session (
        spdm_context,
@@ -231,31 +240,31 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
        measurement_hash);
    ```
 
-   5.2, Send END_SESSION to close the session.
+   5.2, Send `END_SESSION` to close the session.
    ```C
    libspdm_stop_session (spdm_context, session_id, end_session_attributes);
    ```
 
-   5.3, Send HEARTBEAT, when it is required.
+   5.3, Send `HEARTBEAT`, when it is required.
    ```C
    libspdm_heartbeat (spdm_context, session_id);
    ```
 
-   5.4, Send KEY_UPDATE, when it is required.
+   5.4, Send `KEY_UPDATE`, when it is required.
    ```C
    libspdm_key_update (spdm_context, session_id, single_direction);
    ```
 
 6. Send and receive message in an SPDM session
 
-   6.1, Use the SPDM vendor defined request. In libspdm, libspdm_init_connection call is needed first, so NEGOTIATE_ALGORITHMS step is done before sending a vendor defined request. Also, for each VENDOR_DEFINED_REQUEST, a VENDOR_DEFINED_RESPONSE message is expected, even if it has a data payload field of size zero.
+   6.1, Use the SPDM vendor defined request. In libspdm, libspdm_init_connection call is needed first, so `NEGOTIATE_ALGORITHMS` step is done before sending a vendor defined request. Also, for each `VENDOR_DEFINED_REQUEST`, a `VENDOR_DEFINED_RESPONSE` message is expected, even if it has a data payload field of size zero.
    ```C
-   libspdm_vendor_send_request_receive_response (spdm_context, session_id,
+   libspdm_vendor_send_request_receive_response (spdm_context, &session_id,
       req_standard_id, req_vendor_id_len, req_vendor_id, req_size, req_data,
       &resp_standard_id, &resp_vendor_id_len, resp_vendor_id, &resp_size, resp_data);
    ```
 
-   6.2, Use the transport layer application message. (This API does not handle SPDM chunking)
+   6.2, Use the transport layer application message. libspdm does not chunk application messages.
    ```C
    libspdm_send_receive_data (spdm_context, &session_id, true, request, request_size, response, &response_size);
    ```
@@ -268,7 +277,7 @@ Refer to spdm_client_init() in [spdm_requester.c](https://github.com/DMTF/spdm-e
 
 ## SPDM Responder
 
-Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-emu/blob/main/spdm_emu/spdm_responder_emu/spdm_responder_spdm.c)
+Refer to spdm_server_init() in [spdm_responder_spdm.c](https://github.com/DMTF/spdm-emu/blob/main/spdm_emu/spdm_responder_emu/spdm_responder_spdm.c)
 
 0. Choose proper SPDM libraries.
 
@@ -291,9 +300,11 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
 
    If the Responder supports certificate chain setting, implement [setcertlib](https://github.com/DMTF/libspdm/blob/main/include/hal/library/responder/setcertlib.h).
 
-   If the Responder supports GET_KEY_PAIR_INFO or SET_KEY_PAIR_INFO, implement [key_pair_info](https://github.com/DMTF/libspdm/blob/main/include/hal/library/responder/key_pair_info.h).
+   If the Responder supports `GET_KEY_PAIR_INFO` or `SET_KEY_PAIR_INFO`, implement [key_pair_info](https://github.com/DMTF/libspdm/blob/main/include/hal/library/responder/key_pair_info.h).
 
-   If the Responder populates the OpaqueData field of KEY_EXCHANGE_RSP or FINISH_RSP, implement [keyexlib](https://github.com/DMTF/libspdm/blob/main/include/hal/library/responder/keyexlib.h).
+   If the Responder supports `KEY_EXCHANGE`, implement [keyexlib](https://github.com/DMTF/libspdm/blob/main/include/hal/library/responder/keyexlib.h).
+   It provides the OpaqueData of `KEY_EXCHANGE_RSP` and `FINISH_RSP` and, if mutual authentication
+   is supported, decides whether the Responder requests it in a session.
 
    0.2, choose a proper [spdm_secured_message_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_secured_message_lib.h).
 
@@ -303,7 +314,7 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
 
    0.4, choose required SPDM transport libs, such as [spdm_transport_mctp_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_mctp_lib.h) and [spdm_transport_pcidoe_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_pcidoe_lib.h)
 
-   0.5, implement required SPDM device IO functions - `libspdm_device_send_message_func` and `libspdm_device_receive_message_func` according to [spdm_common_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_common_lib.h).
+   0.5, implement required SPDM device IO functions - `libspdm_device_send_message_func` and `libspdm_device_receive_message_func` according to [spdm_common_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_common_lib.h). Also implement the device buffer functions `libspdm_device_acquire_sender_buffer_func`, `libspdm_device_release_sender_buffer_func`, `libspdm_device_acquire_receiver_buffer_func`, and `libspdm_device_release_receiver_buffer_func`.
 
    0.6, if the device does not have access to a real-time clock then build with `-DX509_IGNORE_TIME=ON` so that the validity period of certificates is not checked. This applies to both the OpenSSL and Mbed TLS cryptography libraries.
 
@@ -322,16 +333,18 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
 
    The location of session keys can be separated from spdm_context if desired.
    Each session holds keys in a secured context, and the location of each can be
-   directly specified.
+   directly specified. There must be one secured context, of at least `spdm_secured_context_size`
+   bytes, for each of the `LIBSPDM_MAX_SESSION_COUNT` sessions.
 
    ```C
    spdm_secured_context_size = libspdm_secured_message_get_context_size();
    spdm_secured_contexts[0] = (void *)pointer_to_secured_memory_0;
    spdm_secured_contexts[1] = (void *)pointer_to_secured_memory_1;
    [...]
-   spdm_secured_contexts[num_sessions] = (void *)pointer_to_secured_memory_num_sessions;
+   spdm_secured_contexts[LIBSPDM_MAX_SESSION_COUNT - 1] = (void *)pointer_to_secured_memory_last;
    spdm_context = (void *)malloc (libspdm_get_context_size_without_secured_context());
-   libspdm_init_context_with_secured_context(spdm_context, spdm_secured_contexts, num_sessions);
+   libspdm_init_context_with_secured_context(spdm_context, spdm_secured_contexts,
+                                             LIBSPDM_MAX_SESSION_COUNT);
    ```
 
    Optionally, the Integrator may use `LIBSPDM_CONTEXT_SIZE_ALL`, or `LIBSPDM_CONTEXT_SIZE_WITHOUT_SECURED_CONTEXT` together with `LIBSPDM_SECURED_MESSAGE_CONTEXT_SIZE`, to preallocate the context buffer from a fixed memory region. In this case, the Integrator needs to include the following internal header files.
@@ -343,7 +356,7 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
    1.2, register the device io functions, transport layer functions, and device buffer functions, then set up the scratch buffer.
    The libspdm provides the default [spdm_transport_mctp_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_mctp_lib.h) and [spdm_transport_pcidoe_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_transport_pcidoe_lib.h).
    The SPDM device driver need provide device IO send/receive function.
-   The final sent and received message will be in the sender buffer and receiver buffer.
+   [Buffer Configuration](#buffer-configuration) describes how to choose `LIBSPDM_MAX_SPDM_MSG_SIZE`, `LIBSPDM_SENDER_BUFFER_SIZE`, and `LIBSPDM_RECEIVER_BUFFER_SIZE`.
    Refer to [design](https://github.com/DMTF/libspdm/blob/main/doc/design.md) for the usage of those APIs.
 
    ```C
@@ -368,7 +381,9 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
      spdm_device_release_receiver_buffer);
    ```
 
-   Set up the scratch buffer last. Its required size is derived from the `max_spdm_msg_size` that `libspdm_register_transport_layer_func()` supplies. The scratch buffer may include the decrypted secured message.
+   Set up the scratch buffer last. Its required size is derived from the `max_spdm_msg_size`,
+   `transport_header_size`, and `transport_tail_size` that `libspdm_register_transport_layer_func()`
+   supplies. The scratch buffer may include the decrypted secured message.
 
    ```C
    scratch_buffer_size = libspdm_get_sizeof_required_scratch_buffer(spdm_context);
@@ -376,7 +391,7 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
    libspdm_set_scratch_buffer (spdm_context, scratch_buffer, scratch_buffer_size);
    ```
 
-   Optionally, the Integrator can calculate the `scratch_buffer_size` according to the `max_spdm_msg_size` value input to `libspdm_register_transport_layer_func()`, according to `libspdm_get_scratch_buffer_capacity()` API implementation in [libspdm_com_context_data.c](https://github.com/DMTF/libspdm/blob/main/library/spdm_common_lib/libspdm_com_context_data.c). Note that the size requirement depends on `LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP` and `LIBSPDM_RESPOND_IF_READY_SUPPORT`.
+   To allocate the scratch buffer statically, see [Scratch Buffer](#scratch-buffer) for its size.
 
    1.3, set capabilities and choose algorithms, based upon need.
    ```C
@@ -400,12 +415,22 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
    libspdm_set_data (spdm_context, LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN, &parameter, my_public_cert_chains, my_public_cert_chains_size);
    ```
 
+   If the Responder uses a raw public key instead of a certificate chain, deploy the public key.
+   The public key is ASN.1 DER-encoded as [RFC7250](https://www.rfc-editor.org/rfc/rfc7250) describes,
+   namely, the `SubjectPublicKeyInfo` structure of a X.509 certificate.
+   ```C
+   parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
+   libspdm_set_data (spdm_context, LIBSPDM_DATA_LOCAL_PUBLIC_KEY, &parameter, local_public_key, local_public_key_size);
+   ```
+
    1.5, if mutual authentication (Requester verification) through certificates is required, deploy the peer public root certificate based upon need. The buffer that stores the Requester's certificate chain is given to `libspdm_get_encap_request_get_certificate` when the encapsulated request is issued. See [Encapsulated Flow User Guide](https://github.com/DMTF/libspdm/blob/main/doc/encapsulated_flow_user_guide.md).
    ```C
    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
    libspdm_set_data (spdm_context, LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT, &parameter, peer_root_cert, peer_root_cert_size);
    ```
-   The maximum size of an SPDM certificate chain is SPDM_MAX_CERTIFICATE_CHAIN_SIZE, which is approximately 64 KiB. However most certificate chains are smaller than that.
+   The maximum size of an SPDM certificate chain is `SPDM_MAX_CERTIFICATE_CHAIN_SIZE` (0xFFFF
+   bytes), or `SPDM_MAX_CERTIFICATE_CHAIN_SIZE_14` (0xFFFFFFFF bytes) if SPDM 1.4 is negotiated and
+   the Requester supports `LARGE_RESP_CAP`. However most certificate chains are smaller than that.
 
    If there are many peer root certs to set, you can set the peer root certs in order. Note: the max number of peer root certs is LIBSPDM_MAX_ROOT_CERT_SUPPORT.
    ```C
@@ -421,10 +446,10 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
    ```C
    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
    libspdm_set_data (spdm_context, LIBSPDM_DATA_PEER_PUBLIC_KEY, &parameter, peer_public_key, peer_public_key_size);
-   libspdm_set_data (spdm_context, LIBSPDM_DATA_LOCAL_PUBLIC_KEY, &parameter, local_public_key, local_public_key_size);
    ```
 
-   1.6, if PSK is required, optionally deploy PSK Hint in the call to libspdm_start_session().
+   1.6, if PSK is supported, there is no PSK hint to deploy. The Requester sends its PSK hint in
+   `PSK_EXCHANGE`, and libspdm passes it to the psklib functions from step 0.1.
 
 2. Dispatch SPDM messages.
 
@@ -495,6 +520,90 @@ Refer to spdm_server_init() in [spdm_responder.c](https://github.com/DMTF/spdm-e
    libspdm_deinit_context(spdm_context);
    ```
 
+## Buffer Configuration
+
+In step 1.2 the Integrator gives libspdm three sizes.
+
+| Size | Function | Description |
+|---|---|---|
+| `max_spdm_msg_size` | `libspdm_register_transport_layer_func` | The size of the largest SPDM message that the endpoint receives, which libspdm reports as `MaxSPDMmsgSize` in `GET_CAPABILITIES` / `CAPABILITIES`. The SPDM messages that libspdm sends are also limited to this size. |
+| `sender_buffer_size` | `libspdm_register_device_buffer_func` | The size of the sender buffer, which holds one transport layer message to send. |
+| `receiver_buffer_size` | `libspdm_register_device_buffer_func` | The size of the receiver buffer, which holds one received transport layer message. |
+
+`libspdm_register_transport_layer_func` also takes the transport layer's maximum header and tail
+sizes, such as `LIBSPDM_MCTP_TRANSPORT_HEADER_SIZE` and `LIBSPDM_MCTP_TRANSPORT_TAIL_SIZE`. These
+include any alignment padding and, if the endpoint supports secure sessions, the headers, random
+data, and MAC of a secured message. libspdm subtracts them from each buffer size to get the largest
+SPDM message that fits in a single transfer.
+- `receiver_buffer_size - transport_header_size - transport_tail_size` is the `DataTransferSize`
+  that libspdm reports in `GET_CAPABILITIES` / `CAPABILITIES`.
+- `sender_buffer_size - transport_header_size - transport_tail_size` is the largest SPDM message
+  that libspdm sends in a single transfer.
+
+The sizes must meet the following requirements.
+- Both of the values above must be at least `SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12` (42 bytes) and
+  at most `max_spdm_msg_size`.
+- If the endpoint does not support chunking (`CHUNK_CAP`), then `max_spdm_msg_size` must equal
+  `DataTransferSize`.
+- If the endpoint supports chunking, then `max_spdm_msg_size` must be large enough for the largest
+  SPDM message that the endpoint sends or receives. For example, each local certificate chain plus
+  the `CERTIFICATE` response header must fit in `max_spdm_msg_size`. libspdm sends and receives
+  SPDM messages that are larger than a single transfer in chunks only if both endpoints support
+  chunking. If either endpoint does not support chunking, then the Requester returns an error
+  instead of sending a request that does not fit in a single transfer, and the Responder responds
+  with an `ERROR` message whose `ErrorCode` is `ResponseTooLarge` (`Unspecified` before SPDM 1.2)
+  instead of sending a response that does not fit in a single transfer.
+
+If `LIBSPDM_CHECK_SPDM_CONTEXT` is set then `libspdm_check_context` checks the minimum and
+maximum sizes once the SPDM context has been configured.
+
+The sender buffer and the receiver buffer may have different sizes. However, the SPDM messages that
+libspdm sends are limited to `max_spdm_msg_size`, so if the endpoint does not support chunking then
+the sender buffer must not be larger than the receiver buffer. This limit comes from libspdm, not
+from DSP0274, which does not limit the messages that an endpoint sends by its own `MaxSPDMmsgSize`.
+It mostly affects Responders, which usually send larger messages than they receive: a libspdm
+Responder that does not support chunking cannot send a response that is larger than its own
+`DataTransferSize`. If the endpoint supports chunking then the sender buffer is limited only by
+`max_spdm_msg_size`, even when the peer does not support chunking. Raising `max_spdm_msg_size` to
+send larger messages also raises the size of the largest SPDM message that the endpoint receives,
+and the size of the scratch buffer.
+
+The sender buffer and the receiver buffer may also be the same buffer, as libspdm releases each
+buffer before it acquires the other. If `LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP` is set then libspdm
+still acquires and releases the sender and receiver buffers around each message, but some messages
+are in the scratch buffer instead.
+- For a Requester, libspdm builds each request in the scratch buffer and receives each response into
+  the scratch buffer. The message given to `libspdm_device_send_message_func` and the buffer given
+  to `libspdm_device_receive_message_func` are therefore inside the scratch buffer.
+- For a Responder, libspdm receives each request into the receiver buffer, but
+  `libspdm_responder_dispatch_message` builds each response in the scratch buffer. The message given
+  to `libspdm_device_send_message_func` is therefore inside the scratch buffer.
+
+### Scratch Buffer
+
+`libspdm_get_sizeof_required_scratch_buffer` returns the required size of the scratch buffer. To
+allocate the scratch buffer statically, use the following sizes, where `M` is `max_spdm_msg_size`
+and `T` is `transport_header_size + transport_tail_size`. The layout of the scratch buffer may
+change between libspdm releases, so check that the static size is at least the value that
+`libspdm_get_sizeof_required_scratch_buffer` returns.
+
+| `LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP` | `LIBSPDM_RESPOND_IF_READY_SUPPORT` | Scratch buffer size |
+|---|---|---|
+| 0 | 0 | `2 * M + T` |
+| 0 | 1 | `3 * M + T` |
+| 1 | 0 | `5 * M + 3 * T` |
+| 1 | 1 | `6 * M + 3 * T` |
+
+Which row applies depends on how libspdm is built, not on the capabilities that the endpoint
+advertises.
+
+For example, consider an MCTP endpoint that supports secure sessions, for which `T` is 60, with
+1024-byte sender and receiver buffers. Its `DataTransferSize` is 964 bytes. If libspdm is built
+without `LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP` then `max_spdm_msg_size` is also 964, and with
+`LIBSPDM_RESPOND_IF_READY_SUPPORT` set, the scratch buffer is `3 * 964 + 60` = 2952 bytes. If
+libspdm is built with both set and `max_spdm_msg_size` is 8192, then the scratch buffer is
+`6 * 8192 + 3 * 60` = 49332 bytes.
+
 ## Message Logging
 libspdm allows an Integrator to log request and response messages to an Integrator-provided buffer.
 Message logging enables independent verification of message transcripts by a Verifier entity,
@@ -520,7 +629,7 @@ The log can be reused by calling `libspdm_reset_msg_log`. It retains the buffer 
 `libspdm_set_msg_log_mode` must be called again.
 
 Message logging is only supported within a Requester. Every request is written to the buffer when it
-is sent, and its response is written once the response has been validated. The responses to
-`CHALLENGE`, `GET_CSR`, `GET_SUPPORTED_EVENT_TYPES`, `SUBSCRIBE_EVENT_TYPES`, and `SEND_EVENT` are
-not yet logged, and encapsulated messages are not logged. Message logging can also be added to the
-Responder if there is interest.
+is sent, and its response is written once the response has been validated. The exceptions are the
+`ENCAPSULATED_REQUEST` and `ENCAPSULATED_RESPONSE_ACK` responses, which are not logged; the
+Requester's encapsulated responses are logged within `DELIVER_ENCAPSULATED_RESPONSE`. Message
+logging can also be added to the Responder if there is interest.

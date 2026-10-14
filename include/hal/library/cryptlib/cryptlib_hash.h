@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -37,7 +37,7 @@
  * Allocates and initializes one HASH_CTX context for subsequent SHA-256 use.
  *
  * @return  Pointer to the HASH_CTX context that has been initialized.
- *          If the allocations fails, sha256_new() returns NULL. *
+ *          If the allocations fails, libspdm_sha256_new() returns NULL. *
  **/
 extern void *libspdm_sha256_new(void);
 
@@ -416,7 +416,7 @@ extern bool libspdm_sha3_256_update(void *sha3_256_context, const void *data, si
  * Completes computation of the SHA3-256 digest value.
  *
  * This function completes SHA3-256 hash computation and populates the digest value into
- * the specified memory. After this function has been called, the SHA3-512 context cannot
+ * the specified memory. After this function has been called, the SHA3-256 context cannot
  * be used again. SHA3-256 context should be already correctly initialized by
  * libspdm_sha3_256_init(), and must not have been finalized by libspdm_sha3_256_final().
  * Behavior with invalid SHA3-256 context is undefined.
@@ -717,8 +717,8 @@ extern bool libspdm_sm3_256_duplicate(const void *sm3_context, void *new_sm3_con
  *
  * This function performs SM3 digest on a data buffer of the specified size.
  * It can be called multiple times to compute the digest of long or discontinuous data streams.
- * SM3 context should be already correctly initialized by sm3_init(), and should not be finalized
- * by sm3_final(). Behavior with invalid context is undefined.
+ * SM3 context should be already correctly initialized by libspdm_sm3_256_init(), and should not be finalized
+ * by libspdm_sm3_256_final(). Behavior with invalid context is undefined.
  *
  * If sm3_context is NULL, then return false.
  *
@@ -736,8 +736,8 @@ extern bool libspdm_sm3_256_update(void *sm3_context, const void *data, size_t d
  *
  * This function completes SM3 hash computation and retrieves the digest value into
  * the specified memory. After this function has been called, the SM3 context cannot
- * be used again. SM3 context should be already correctly initialized by sm3_init(), and should not
- * be finalized by sm3_final(). Behavior with invalid SM3 context is undefined.
+ * be used again. SM3 context should be already correctly initialized by libspdm_sm3_256_init(), and should not
+ * be finalized by libspdm_sm3_256_final(). Behavior with invalid SM3 context is undefined.
  *
  * If sm3_context is NULL, then return false.
  * If hash_value is NULL, then return false.

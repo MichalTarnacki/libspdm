@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -9,7 +9,8 @@
 #include "internal/libspdm_device_secret_lib.h"
 #include "internal/libspdm_responder_lib.h"
 
-#if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+#if (LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP) && \
+    ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP))
 
 size_t libspdm_get_max_buffer_size(void)
 {
@@ -57,6 +58,7 @@ void libspdm_test_responder_heartbeat_case1(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        LIBSPDM_ASSERT(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -173,6 +175,7 @@ void libspdm_test_responder_heartbeat_case4(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        LIBSPDM_ASSERT(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -245,4 +248,4 @@ size_t libspdm_get_max_buffer_size(void)
 void libspdm_run_test_harness(void *test_buffer, size_t test_buffer_size){
 
 }
-#endif /* (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP) */
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP) && (...) */

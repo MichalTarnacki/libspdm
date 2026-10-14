@@ -20,10 +20,12 @@ bool libspdm_verify_measurement_signature(libspdm_context_t *spdm_context,
     libspdm_l1l2_managed_buffer_t l1l2;
     uint8_t *l1l2_buffer;
     size_t l1l2_buffer_size;
+#if LIBSPDM_CERT_PARSE_SUPPORT
     const uint8_t *cert_chain_data;
     size_t cert_chain_data_size;
     const uint8_t *cert_buffer;
     size_t cert_buffer_size;
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 #else
     uint8_t l1l2_hash[LIBSPDM_MAX_HASH_SIZE];
     size_t l1l2_hash_size;
@@ -63,7 +65,7 @@ bool libspdm_verify_measurement_signature(libspdm_context_t *spdm_context,
             return false;
         }
     } else {
-#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+#if (LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && (LIBSPDM_CERT_PARSE_SUPPORT)
         libspdm_get_peer_cert_chain_data(
             spdm_context, slot_id, (const void **)&cert_chain_data, &cert_chain_data_size);
 
@@ -87,6 +89,8 @@ bool libspdm_verify_measurement_signature(libspdm_context_t *spdm_context,
         if (!result) {
             return false;
         }
+#elif LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+        return false;
 #else
         context = spdm_context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key;
         LIBSPDM_ASSERT(context != NULL);
@@ -142,16 +146,16 @@ bool libspdm_verify_measurement_signature(libspdm_context_t *spdm_context,
 }
 
 /**
- * This function sends GET_MEASUREMENT to get measurement from the device.
+ * This function sends GET_MEASUREMENTS to get measurements from the device.
  * If the signature is requested this function verifies the signature of the measurement.
  *
- * @param  context                    A pointer to the SPDM context.
+ * @param  spdm_context               A pointer to the SPDM context.
  * @param  session_id                 Indicates if it is a secured message protected via SPDM session.
  *                                    If session_id is NULL, it is a normal message.
  *                                    If session_id is not NULL, it is a secured message.
  * @param  request_attribute          The request attribute of the request message.
  * @param  measurement_operation      The measurement operation of the request message.
- * @param  slot_id                    The number of slot for the certificate chain.
+ * @param  slot_id_param              The number of slot for the certificate chain.
  * @param  requester_context          If not NULL, a buffer to hold the requester context (8 bytes).
  *                                    It is used only if the negotiated version >= 1.3.
  * @param  content_changed            The measurement content changed output param.
@@ -502,7 +506,7 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
         }
 
         if ((opaque_data != NULL) && (opaque_data_size != NULL)) {
-            if (opaque_length >= *opaque_data_size) {
+            if (opaque_length > *opaque_data_size) {
                 status = LIBSPDM_STATUS_BUFFER_TOO_SMALL;
                 goto receive_done;
             }
@@ -613,7 +617,7 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
         }
 
         if ((opaque_data != NULL) && (opaque_data_size != NULL)) {
-            if (opaque_length >= *opaque_data_size) {
+            if (opaque_length > *opaque_data_size) {
                 status = LIBSPDM_STATUS_BUFFER_TOO_SMALL;
                 goto receive_done;
             }

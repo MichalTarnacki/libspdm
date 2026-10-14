@@ -21,6 +21,7 @@ void spdm_device_release_receiver_buffer (void *context, const void *msg_buf_ptr
 
 static uint32_t libspdm_opaque_data = 0xDEADBEEF;
 
+#if LIBSPDM_CERT_PARSE_SUPPORT
 /**
  * This function verifies peer certificate chain buffer including spdm_cert_chain_t header.
  *
@@ -59,6 +60,7 @@ static bool libspdm_verify_peer_cert_chain_buffer(void *spdm_context,
 
     return true;
 }
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 
 /**
  * Return the size in bytes of multi element opaque data supported version.
@@ -362,7 +364,7 @@ static void libspdm_test_common_context_data_case1(void **state)
                               NULL, &return_data, &data_return_size);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
 
-    assert_memory_equal(data, return_data, sizeof(data));
+    assert_ptr_equal(data, return_data);
     assert_int_equal(data_return_size, sizeof(void*));
 
     /* check that nothing changed at the data location */
@@ -514,9 +516,12 @@ static void libspdm_test_common_context_data_case4(void **state)
 /**
  * Test 5: There is no root cert.
  * Expected Behavior: Return true result.
+ *
+ * Skipped if LIBSPDM_CERT_PARSE_SUPPORT is disabled.
  **/
 void libspdm_test_verify_peer_cert_chain_buffer_case5(void **state)
 {
+#if LIBSPDM_CERT_PARSE_SUPPORT
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
     void *data;
@@ -529,7 +534,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case5(void **state)
     const void *trust_anchor;
     size_t trust_anchor_size;
     bool result;
-    uint8_t root_cert_index;
+    size_t root_cert_index;
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -565,6 +570,9 @@ void libspdm_test_verify_peer_cert_chain_buffer_case5(void **state)
     assert_int_equal (result, true);
 
     free(data);
+#else
+    skip();
+#endif
 }
 
 /**
@@ -573,9 +581,12 @@ void libspdm_test_verify_peer_cert_chain_buffer_case5(void **state)
  * case                                              Expected Behavior
  * there is one match root cert;                     return false
  * there is one mismatch root cert;                  return true, and the return trust_anchor is root cert.
+ *
+ * Skipped if LIBSPDM_CERT_PARSE_SUPPORT is disabled.
  **/
 void libspdm_test_verify_peer_cert_chain_buffer_case6(void **state)
 {
+#if LIBSPDM_CERT_PARSE_SUPPORT
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
     void *data;
@@ -596,7 +607,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case6(void **state)
     const void *trust_anchor;
     size_t trust_anchor_size;
     bool result;
-    uint8_t root_cert_index;
+    size_t root_cert_index;
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -623,6 +634,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case6(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo_test, &data_test,
                                                          &data_size_test, &hash_test, &hash_size_test)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain(
@@ -656,6 +668,9 @@ void libspdm_test_verify_peer_cert_chain_buffer_case6(void **state)
 
     free(data);
     free(data_test);
+#else
+    skip();
+#endif
 }
 
 /**
@@ -665,9 +680,13 @@ void libspdm_test_verify_peer_cert_chain_buffer_case6(void **state)
  * there is no match root cert;                      return false
  * there is one match root cert in the end;          return true, and the return trust_anchor is root cert.
  * there is one match root cert in the middle;       return true, and the return trust_anchor is root cert.
+ *
+ * Skipped if LIBSPDM_CERT_PARSE_SUPPORT is disabled, or if LIBSPDM_MAX_ROOT_CERT_SUPPORT is less
+ * than 2, as the first case then provisions no root certificate.
  **/
 void libspdm_test_verify_peer_cert_chain_buffer_case7(void **state)
 {
+#if LIBSPDM_CERT_PARSE_SUPPORT && (LIBSPDM_MAX_ROOT_CERT_SUPPORT) >= 2
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
     void *data;
@@ -688,7 +707,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case7(void **state)
     const void *trust_anchor;
     size_t trust_anchor_size;
     bool result;
-    uint8_t root_cert_index;
+    size_t root_cert_index;
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -714,6 +733,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case7(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo_test, &data_test,
                                                          &data_size_test, &hash_test, &hash_size_test)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain(
@@ -763,6 +783,9 @@ void libspdm_test_verify_peer_cert_chain_buffer_case7(void **state)
 
     free(data);
     free(data_test);
+#else
+    skip();
+#endif
 }
 
 
@@ -773,9 +796,12 @@ void libspdm_test_verify_peer_cert_chain_buffer_case7(void **state)
  * there is no match root cert;                      return false
  * there is one match root cert in the end;          return true, and the return trust_anchor is root cert.
  * there is one match root cert in the middle;       return true, and the return trust_anchor is root cert.
+ *
+ * Skipped if LIBSPDM_CERT_PARSE_SUPPORT is disabled.
  **/
 void libspdm_test_verify_peer_cert_chain_buffer_case8(void **state)
 {
+#if LIBSPDM_CERT_PARSE_SUPPORT
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
     void *data;
@@ -796,7 +822,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case8(void **state)
     const void *trust_anchor;
     size_t trust_anchor_size;
     bool result;
-    uint8_t root_cert_index;
+    size_t root_cert_index;
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -822,6 +848,7 @@ void libspdm_test_verify_peer_cert_chain_buffer_case8(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo_test, &data_test,
                                                          &data_size_test, &hash_test, &hash_size_test)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain(
@@ -869,6 +896,9 @@ void libspdm_test_verify_peer_cert_chain_buffer_case8(void **state)
 
     free(data);
     free(data_test);
+#else
+    skip();
+#endif
 }
 
 /**
@@ -877,9 +907,12 @@ void libspdm_test_verify_peer_cert_chain_buffer_case8(void **state)
  * case                                              Expected Behavior
  * there is null root cert;                          return LIBSPDM_STATUS_SUCCESS, and the root cert is set successfully.
  * there is full root cert;                          return RETURN_OUT_OF_RESOURCES.
+ *
+ * Skipped if LIBSPDM_CERT_PARSE_SUPPORT is disabled.
  **/
 static void libspdm_test_set_data_case9(void **state)
 {
+#if LIBSPDM_CERT_PARSE_SUPPORT
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -893,7 +926,7 @@ static void libspdm_test_set_data_case9(void **state)
     uint8_t root_cert_buffer[LIBSPDM_MAX_CERT_CHAIN_SIZE];
     size_t root_cert_size;
 
-    uint8_t root_cert_index;
+    size_t root_cert_index;
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -934,6 +967,9 @@ static void libspdm_test_set_data_case9(void **state)
     assert_int_equal (status, LIBSPDM_STATUS_BUFFER_FULL);
 
     free(data);
+#else
+    skip();
+#endif
 }
 
 
@@ -1394,6 +1430,7 @@ static void libspdm_test_export_master_secret_case19(void **state)
     assert_int_equal(export_master_secret_size, LIBSPDM_MAX_HASH_SIZE - 4);
 }
 
+#if LIBSPDM_CHECK_SPDM_CONTEXT
 static void libspdm_test_check_context_case20(void **state)
 {
     void *context;
@@ -1433,10 +1470,21 @@ static void libspdm_test_check_context_case20(void **state)
 
     result = libspdm_check_context (context);
     assert_int_equal(false, result);
-}
 
+    libspdm_deinit_context(context);
+    free(context);
+}
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
+
+/**
+ * Test 21: Allocate DHE and PSK session IDs up to the local maximums, for six splits of
+ * LIBSPDM_MAX_SESSION_COUNT between the two.
+ * Expected Behavior: each allocation within a maximum succeeds, and the next one fails.
+ * Skipped if LIBSPDM_MAX_SESSION_COUNT is less than 2, as the first split needs two sessions.
+ **/
 static void libspdm_test_max_session_count_case21(void **state)
 {
+#if (LIBSPDM_MAX_SESSION_COUNT) >= 2
     libspdm_context_t *spdm_context;
     libspdm_data_parameter_t parameter;
     size_t index;
@@ -1558,6 +1606,9 @@ static void libspdm_test_max_session_count_case21(void **state)
 
         free(spdm_context);
     }
+#else
+    skip();
+#endif
 }
 
 #pragma pack(1)
@@ -1717,9 +1768,10 @@ static void libspdm_test_process_opaque_data_case22(void **state)
 
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
 /**
- * Test 23: libspdm_reset_context releases the peer leaf certificate public key.
- * Expected Behavior: after a parsed leaf public key is stored for a slot,
- * reset_context frees it and clears the slot, so it is not orphaned when the
+ * Test 23: libspdm_reset_context empties the peer certificate chain slots.
+ * Expected Behavior: a slot that holds a chain as GET_CERTIFICATE leaves it, with the hash of the
+ * chain and its parsed leaf public key, is emptied by reset_context. The key is freed rather than
+ * orphaned, and the hash is cleared so that the slot does not look populated without a key when the
  * connection is re-established (reset_context runs on every GET_VERSION).
  **/
 static void libspdm_test_reset_context_leaf_key_case23(void **state)
@@ -1752,9 +1804,16 @@ static void libspdm_test_reset_context_leaf_key_case23(void **state)
     assert_true(result);
     assert_non_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
 
+    result = libspdm_hash_all(m_libspdm_use_hash_algo, data, data_size,
+                              spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
+    assert_true(result);
+    spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
+        libspdm_get_hash_size(m_libspdm_use_hash_algo);
+
     libspdm_reset_context(spdm_context);
 
     assert_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+    assert_int_equal(spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size, 0);
 
     free(data);
 }
@@ -2382,6 +2441,2437 @@ static void libspdm_test_aead_limit_small_exponent_case30(void **state)
     }
 }
 
+/**
+ * Test 31: libspdm_reset_context restores the SPDM 1.0 and 1.1 signature endianness setting.
+ * Expected Behavior: the Integrator selects BIG_OR_LITTLE and a successful verification narrows it
+ * to the endianness of the peer's signatures. A connection reset returns it to BIG_OR_LITTLE, so the
+ * peer of the next connection may use either endianness.
+ **/
+static void libspdm_test_reset_context_verify_signature_endian_case31(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    uint8_t endian;
+    libspdm_return_t status;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x1F;
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
+    endian = LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE;
+    status = libspdm_set_data(spdm_context, LIBSPDM_DATA_SPDM_VERSION_10_11_VERIFY_SIGNATURE_ENDIAN,
+                              &parameter, &endian, sizeof(endian));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    /* The narrowing that a successful verification of a little-endian signature performs. */
+    spdm_context->spdm_10_11_verify_signature_endian =
+        LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_LITTLE_ONLY;
+
+    libspdm_reset_context(spdm_context);
+
+    assert_int_equal(spdm_context->spdm_10_11_verify_signature_endian,
+                     LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE);
+}
+
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+/**
+ * Test 32: libspdm_reset_context ends a chunk transfer in either direction.
+ * Expected Behavior: a CHUNK_GET or CHUNK_SEND transfer that is in progress is ended and the large
+ * message it was carrying is erased, so a connection reset on the Requester clears the chunk state
+ * as a GET_VERSION does on the Responder.
+ **/
+static void libspdm_test_reset_context_chunk_case32(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    void *scratch_buffer;
+    size_t scratch_buffer_size;
+    uint8_t *large_message;
+    size_t large_message_capacity;
+    libspdm_chunk_info_t *chunk_info[2];
+    size_t index;
+    size_t byte_index;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x20;
+
+    libspdm_get_scratch_buffer(spdm_context, &scratch_buffer, &scratch_buffer_size);
+    large_message = (uint8_t *)scratch_buffer +
+                    libspdm_get_scratch_buffer_large_message_offset(spdm_context);
+    large_message_capacity = libspdm_get_scratch_buffer_large_message_capacity(spdm_context);
+
+    chunk_info[0] = &spdm_context->chunk_context.get;
+    chunk_info[1] = &spdm_context->chunk_context.send;
+
+    for (index = 0; index < LIBSPDM_ARRAY_SIZE(chunk_info); index++) {
+        libspdm_set_mem(large_message, large_message_capacity, 0xa5);
+        chunk_info[index]->chunk_in_use = true;
+        chunk_info[index]->chunk_seq_no = 2;
+        chunk_info[index]->chunk_bytes_transferred = large_message_capacity / 2;
+        chunk_info[index]->large_message = large_message;
+        chunk_info[index]->large_message_size = large_message_capacity;
+        chunk_info[index]->large_message_capacity = large_message_capacity;
+
+        libspdm_reset_context(spdm_context);
+
+        assert_false(chunk_info[index]->chunk_in_use);
+        assert_int_equal(chunk_info[index]->chunk_seq_no, 0);
+        assert_int_equal(chunk_info[index]->chunk_bytes_transferred, 0);
+        assert_null(chunk_info[index]->large_message);
+        assert_int_equal(chunk_info[index]->large_message_size, 0);
+        assert_int_equal(chunk_info[index]->large_message_capacity, 0);
+        for (byte_index = 0; byte_index < large_message_capacity; byte_index++) {
+            assert_int_equal(large_message[byte_index], 0);
+        }
+    }
+}
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT
+/**
+ * Test 33: A Responder sets LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER to the Requester's
+ * certificate chain. The default Requester algorithm (RSASSA-2048) and Responder algorithm
+ * (ECDSA P-256) use different key types.
+ * Expected Behavior: the peer is the Requester, so the leaf public key is parsed with
+ * ReqBaseAsymAlg and libspdm_set_data succeeds. libspdm_reset_context then releases the key with
+ * the same algorithm.
+ **/
+static void libspdm_test_set_data_peer_cert_chain_responder_case33(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    libspdm_return_t status;
+    void *data;
+    size_t data_size;
+    void *hash;
+    size_t hash_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x21;
+
+    spdm_context->local_context.is_requester = false;
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->connection_info.algorithm.pqc_asym_algo = 0;
+    spdm_context->connection_info.algorithm.req_base_asym_alg = m_libspdm_use_req_asym_algo;
+    spdm_context->connection_info.algorithm.req_pqc_asym_alg = 0;
+
+    if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_req_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_CONNECTION;
+    parameter.additional_data[0] = 0;
+    status = libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, &parameter,
+                              data, data_size);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_non_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    libspdm_reset_context(spdm_context);
+    assert_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    free(data);
+}
+
+/**
+ * Test 34: A Requester sets LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER to the Responder's
+ * certificate chain, with the same algorithms as Test 33.
+ * Expected Behavior: the peer is the Responder, so the leaf public key is parsed with
+ * BaseAsymAlgo and libspdm_set_data succeeds.
+ **/
+static void libspdm_test_set_data_peer_cert_chain_requester_case34(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    libspdm_return_t status;
+    void *data;
+    size_t data_size;
+    void *hash;
+    size_t hash_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x22;
+
+    spdm_context->local_context.is_requester = true;
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->connection_info.algorithm.pqc_asym_algo = 0;
+    spdm_context->connection_info.algorithm.req_base_asym_alg = m_libspdm_use_req_asym_algo;
+    spdm_context->connection_info.algorithm.req_pqc_asym_alg = 0;
+
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_CONNECTION;
+    parameter.additional_data[0] = 0;
+    status = libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, &parameter,
+                              data, data_size);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_non_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    libspdm_reset_context(spdm_context);
+    assert_null(spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+
+    free(data);
+}
+#endif /* !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT */
+
+/* An item that libspdm_set_data or libspdm_get_data is called with, and the value or size to use. */
+typedef struct {
+    libspdm_data_type_t data_type;
+    libspdm_data_location_t location;
+    size_t data_size;
+    uint64_t value;
+} libspdm_test_data_item_t;
+
+typedef union {
+    uint8_t u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
+    uint8_t bytes[LIBSPDM_MAX_HASH_SIZE];
+} libspdm_test_data_value_t;
+
+#define LIBSPDM_TEST_SESSION_ID 0xFFFEFFFE
+
+static void libspdm_test_encode_value(libspdm_test_data_value_t *data, size_t data_size,
+                                      uint64_t value)
+{
+    libspdm_zero_mem(data, sizeof(*data));
+    switch (data_size) {
+    case sizeof(uint8_t):
+        data->u8 = (uint8_t)value;
+        break;
+    case sizeof(uint16_t):
+        data->u16 = (uint16_t)value;
+        break;
+    case sizeof(uint32_t):
+        data->u32 = (uint32_t)value;
+        break;
+    case sizeof(uint64_t):
+        data->u64 = value;
+        break;
+    default:
+        fail();
+        break;
+    }
+}
+
+static void libspdm_test_init_parameter(libspdm_data_parameter_t *parameter,
+                                        libspdm_data_location_t location, uint32_t additional_data)
+{
+    libspdm_zero_mem(parameter, sizeof(*parameter));
+    parameter->location = location;
+    libspdm_write_uint32(parameter->additional_data, additional_data);
+}
+
+static libspdm_session_info_t *libspdm_test_start_session(libspdm_context_t *spdm_context,
+                                                          bool use_psk)
+{
+    libspdm_session_info_t *session_info;
+
+    session_info = &spdm_context->session_info[0];
+    libspdm_session_info_init(spdm_context, session_info, LIBSPDM_TEST_SESSION_ID,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, use_psk);
+    return session_info;
+}
+
+/* Calls libspdm_set_data for each item, with additional_data holding any slot ID or session ID,
+ * and checks that it returns the expected status. */
+static void libspdm_test_set_data_items(libspdm_context_t *spdm_context,
+                                        const libspdm_test_data_item_t *items, size_t item_count,
+                                        uint32_t additional_data, libspdm_return_t expected_status)
+{
+    libspdm_data_parameter_t parameter;
+    libspdm_test_data_value_t data;
+    size_t index;
+
+    libspdm_zero_mem(&data, sizeof(data));
+    for (index = 0; index < item_count; index++) {
+        libspdm_test_init_parameter(&parameter, items[index].location, additional_data);
+        assert_int_equal(libspdm_set_data(spdm_context, items[index].data_type, &parameter,
+                                          &data, items[index].data_size),
+                         expected_status);
+    }
+}
+
+/* Calls libspdm_get_data for each item, with additional_data holding any slot ID or session ID,
+ * and checks that it returns the expected status. */
+static void libspdm_test_get_data_items(libspdm_context_t *spdm_context,
+                                        const libspdm_test_data_item_t *items, size_t item_count,
+                                        uint32_t additional_data, libspdm_return_t expected_status)
+{
+    libspdm_data_parameter_t parameter;
+    libspdm_test_data_value_t data;
+    size_t data_size;
+    size_t index;
+
+    for (index = 0; index < item_count; index++) {
+        libspdm_test_init_parameter(&parameter, items[index].location, additional_data);
+        data_size = sizeof(data);
+        assert_int_equal(libspdm_get_data(spdm_context, items[index].data_type, &parameter,
+                                          &data, &data_size),
+                         expected_status);
+    }
+}
+
+/* Sets a LIBSPDM_DATA_LOCATION_LOCAL item and checks that its value is stored in field. */
+static void libspdm_test_set_local_item(libspdm_context_t *spdm_context,
+                                        libspdm_data_type_t data_type, uint8_t slot_id,
+                                        size_t data_size, uint64_t value, const void *field)
+{
+    libspdm_data_parameter_t parameter;
+    libspdm_test_data_value_t data;
+
+    libspdm_test_encode_value(&data, data_size, value);
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, slot_id);
+    assert_int_equal(libspdm_set_data(spdm_context, data_type, &parameter, &data, data_size),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_memory_equal(field, &data, data_size);
+}
+
+/* Gets an item and checks that libspdm_get_data returns the value of field. */
+static void libspdm_test_get_item(libspdm_context_t *spdm_context, libspdm_data_type_t data_type,
+                                  libspdm_data_location_t location, uint32_t additional_data,
+                                  const void *field, size_t field_size)
+{
+    libspdm_data_parameter_t parameter;
+    libspdm_test_data_value_t data;
+    size_t data_size;
+
+    libspdm_test_init_parameter(&parameter, location, additional_data);
+    data_size = sizeof(data);
+    assert_int_equal(libspdm_get_data(spdm_context, data_type, &parameter, &data, &data_size),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(data_size, field_size);
+    assert_memory_equal(&data, field, field_size);
+}
+
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+/* Checks that hash_context holds the digest of data, without finalizing hash_context. */
+static void libspdm_test_assert_digest(uint32_t base_hash_algo, const void *hash_context,
+                                       const uint8_t *data, size_t data_size)
+{
+    uint8_t expected[LIBSPDM_MAX_HASH_SIZE];
+    uint8_t actual[LIBSPDM_MAX_HASH_SIZE];
+    void *copy;
+
+    assert_non_null(hash_context);
+    copy = libspdm_hash_new(base_hash_algo);
+    assert_non_null(copy);
+    assert_true(libspdm_hash_duplicate(base_hash_algo, hash_context, copy));
+    assert_true(libspdm_hash_final(base_hash_algo, copy, actual));
+    libspdm_hash_free(base_hash_algo, copy);
+    assert_true(libspdm_hash_all(base_hash_algo, data, data_size, expected));
+    assert_memory_equal(actual, expected, libspdm_get_hash_size(base_hash_algo));
+}
+#endif /* !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) */
+
+/* Items that libspdm_get_data returns at the location libspdm_set_data stores them. */
+static const libspdm_test_data_item_t m_libspdm_test_round_trip_items[] = {
+    { LIBSPDM_DATA_SPDM_VERSION, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(spdm_version_number_t),
+      SPDM_MESSAGE_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT },
+    /* libspdm_set_data asserts on a local flag whose LIBSPDM_ENABLE_CAPABILITY_*_CAP is 0, and no
+     * such switch covers PUB_KEY_ID_CAP. */
+    { LIBSPDM_DATA_CAPABILITY_FLAGS, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t),
+      SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PUB_KEY_ID_CAP },
+    { LIBSPDM_DATA_CAPABILITY_FLAGS, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_KEY_UPD_CAP },
+    { LIBSPDM_DATA_CAPABILITY_EXT_FLAGS, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0x0001 },
+    { LIBSPDM_DATA_CAPABILITY_EXT_FLAGS, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t),
+      0x0002 },
+    { LIBSPDM_DATA_CAPABILITY_CT_EXPONENT, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t), 12 },
+    { LIBSPDM_DATA_CAPABILITY_CT_EXPONENT, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t), 13 },
+    { LIBSPDM_DATA_CAPABILITY_MAX_SPDM_MSG_SIZE, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(uint32_t), 0x2000 },
+    { LIBSPDM_DATA_MEASUREMENT_SPEC, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t),
+      SPDM_MEASUREMENT_SPECIFICATION_DMTF },
+    { LIBSPDM_DATA_MEASUREMENT_HASH_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_TPM_ALG_SHA_384 },
+    { LIBSPDM_DATA_BASE_ASYM_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_ALGORITHMS_BASE_ASYM_ALGO_TPM_ALG_ECDSA_ECC_NIST_P384 },
+    { LIBSPDM_DATA_BASE_HASH_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_ALGORITHMS_BASE_HASH_ALGO_TPM_ALG_SHA_384 },
+    { LIBSPDM_DATA_DHE_NAME_GROUP, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t),
+      SPDM_ALGORITHMS_DHE_NAMED_GROUP_SECP_384_R1 },
+    { LIBSPDM_DATA_AEAD_CIPHER_SUITE, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t),
+      SPDM_ALGORITHMS_AEAD_CIPHER_SUITE_AES_256_GCM },
+    { LIBSPDM_DATA_REQ_BASE_ASYM_ALG, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t),
+      SPDM_ALGORITHMS_BASE_ASYM_ALGO_TPM_ALG_RSASSA_3072 },
+    { LIBSPDM_DATA_KEY_SCHEDULE, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t),
+      SPDM_ALGORITHMS_KEY_SCHEDULE_SPDM },
+    { LIBSPDM_DATA_OTHER_PARAMS_SUPPORT, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t),
+      SPDM_ALGORITHMS_OPAQUE_DATA_FORMAT_1 },
+    { LIBSPDM_DATA_MEL_SPEC, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t),
+      SPDM_MEL_SPECIFICATION_DMTF },
+    { LIBSPDM_DATA_PQC_ASYM_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_65 },
+    { LIBSPDM_DATA_REQ_PQC_ASYM_ALG, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_65 },
+    { LIBSPDM_DATA_KEM_ALG, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t),
+      SPDM_ALGORITHMS_KEM_ALG_ML_KEM_768 },
+    { LIBSPDM_DATA_CONNECTION_STATE, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(libspdm_connection_state_t), LIBSPDM_CONNECTION_STATE_NEGOTIATED },
+    { LIBSPDM_DATA_RESPONSE_STATE, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(libspdm_response_state_t),
+      LIBSPDM_RESPONSE_STATE_BUSY },
+    { LIBSPDM_DATA_APP_CONTEXT_DATA, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(void *), 0x1000 },
+    { LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t),
+      LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY_DROP_ON_DECRYPT_ERROR },
+    /* The two maximums cannot sum to more than LIBSPDM_MAX_SESSION_COUNT, which can be 1. */
+    { LIBSPDM_DATA_MAX_DHE_SESSION_COUNT, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t), 1 },
+    { LIBSPDM_DATA_MAX_PSK_SESSION_COUNT, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t),
+      LIBSPDM_MAX_SESSION_COUNT - 1 },
+    { LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(uint64_t), 0xFFFF },
+    { LIBSPDM_DATA_SPDM_VERSION_10_11_VERIFY_SIGNATURE_ENDIAN, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(uint8_t), LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_LITTLE_ONLY },
+    { LIBSPDM_DATA_SEQUENCE_NUMBER_ENDIAN, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t),
+      LIBSPDM_DATA_SESSION_SEQ_NUM_ENC_BIG_DEC_BIG },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_REQ, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(bool), true },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_RSP, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(bool), true },
+};
+
+/* Items whose size libspdm_set_data checks, each with a size that it does not accept. */
+static const libspdm_test_data_item_t m_libspdm_test_wrong_size_items[] = {
+    { LIBSPDM_DATA_CAPABILITY_FLAGS, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_EXT_FLAGS, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_CT_EXPONENT, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_RTT_US, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_MAX_SPDM_MSG_SIZE, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_MEASUREMENT_SPEC, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_MEASUREMENT_HASH_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_BASE_ASYM_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_BASE_HASH_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_DHE_NAME_GROUP, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_AEAD_CIPHER_SUITE, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_REQ_BASE_ASYM_ALG, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_KEY_SCHEDULE, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_OTHER_PARAMS_SUPPORT, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_MEL_SPEC, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_PQC_ASYM_ALGO, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_REQ_PQC_ASYM_ALG, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_KEM_ALG, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_ALGO_PRIORITY_PQC_FIRST, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_CONNECTION_STATE, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_RESPONSE_STATE, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_LOCAL_SUPPORTED_SLOT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_LOCAL_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_LOCAL_CERT_INFO, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_LOCAL_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_HEARTBEAT_PERIOD, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_APP_CONTEXT_DATA, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_VCA_CACHE, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(((libspdm_context_t *)0)->transcript.message_a.buffer) + 1, 0 },
+    { LIBSPDM_DATA_IS_REQUESTER, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_REQUEST_RETRY_TIMES, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_REQUEST_RETRY_DELAY_TIME, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_MAX_DHE_SESSION_COUNT, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_MAX_PSK_SESSION_COUNT, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_SPDM_VERSION_10_11_VERIFY_SIGNATURE_ENDIAN, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_SEQUENCE_NUMBER_ENDIAN, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_REQ, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_RSP, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint16_t), 0 },
+};
+
+/* Items that libspdm_set_data accepts at some locations, each with a location that it rejects. */
+static const libspdm_test_data_item_t m_libspdm_test_set_wrong_location_items[] = {
+    { LIBSPDM_DATA_SPDM_VERSION, LIBSPDM_DATA_LOCATION_SESSION, sizeof(spdm_version_number_t), 0 },
+    { LIBSPDM_DATA_SECURED_MESSAGE_VERSION, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_version_number_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_FLAGS, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_EXT_FLAGS, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_CT_EXPONENT, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_RTT_US, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_CAPABILITY_MAX_SPDM_MSG_SIZE, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t),
+      0 },
+    { LIBSPDM_DATA_MEASUREMENT_SPEC, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_MEASUREMENT_HASH_ALGO, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_BASE_ASYM_ALGO, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_BASE_HASH_ALGO, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_DHE_NAME_GROUP, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_AEAD_CIPHER_SUITE, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_REQ_BASE_ASYM_ALG, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_KEY_SCHEDULE, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint16_t), 0 },
+    { LIBSPDM_DATA_OTHER_PARAMS_SUPPORT, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_MEL_SPEC, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_PQC_ASYM_ALGO, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_REQ_PQC_ASYM_ALG, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_KEM_ALG, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_ALGO_PRIORITY_PQC_FIRST, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(bool), 0 },
+    { LIBSPDM_DATA_CONNECTION_STATE, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(libspdm_connection_state_t), 0 },
+#if LIBSPDM_CERT_PARSE_SUPPORT
+    { LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint64_t), 0 },
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
+    { LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint64_t),
+      0 },
+    { LIBSPDM_DATA_LOCAL_SUPPORTED_SLOT_MASK, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t),
+      0 },
+    { LIBSPDM_DATA_LOCAL_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_key_pair_id_t), 0 },
+    { LIBSPDM_DATA_LOCAL_CERT_INFO, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_certificate_info_t), 0 },
+    { LIBSPDM_DATA_LOCAL_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_key_usage_bit_mask_t), 0 },
+    { LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint64_t),
+      0 },
+    { LIBSPDM_DATA_PEER_PUBLIC_KEY, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_LOCAL_PUBLIC_KEY, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_HEARTBEAT_PERIOD, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_IS_REQUESTER, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(bool), 0 },
+    { LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER, LIBSPDM_DATA_LOCATION_SESSION,
+      sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_REQ, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(bool), 0 },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_RSP, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(bool), 0 },
+    { LIBSPDM_DATA_SESSION_POLICY, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t), 0 },
+};
+
+/* Items that libspdm_set_data stores per slot, with the slot ID in additional_data[0]. */
+static const libspdm_test_data_item_t m_libspdm_test_set_slot_items[] = {
+    { LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_LOCAL_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(spdm_key_pair_id_t), 0 },
+    { LIBSPDM_DATA_LOCAL_CERT_INFO, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(spdm_certificate_info_t),
+      0 },
+    { LIBSPDM_DATA_LOCAL_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(spdm_key_usage_bit_mask_t), 0 },
+    { LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(uint64_t), 0 },
+};
+
+/* Items that libspdm_get_data returns but libspdm_set_data does not store. */
+static const libspdm_test_data_item_t m_libspdm_test_read_only_items[] = {
+    { LIBSPDM_DATA_CAPABILITY_DATA_TRANSFER_SIZE, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint32_t),
+      0 },
+    { LIBSPDM_DATA_CAPABILITY_SENDER_DATA_TRANSFER_SIZE, LIBSPDM_DATA_LOCATION_LOCAL,
+      sizeof(uint32_t), 0 },
+    { LIBSPDM_DATA_PEER_PROVISIONED_SLOT_MASK, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t),
+      0 },
+    { LIBSPDM_DATA_PEER_SUPPORTED_SLOT_MASK, LIBSPDM_DATA_LOCATION_CONNECTION, sizeof(uint8_t),
+      0 },
+    { LIBSPDM_DATA_PEER_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_key_pair_id_t), 0 },
+    { LIBSPDM_DATA_PEER_CERT_INFO, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_certificate_info_t), 0 },
+    { LIBSPDM_DATA_PEER_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_CONNECTION,
+      sizeof(spdm_key_usage_bit_mask_t), 0 },
+    { LIBSPDM_DATA_REQUEST_AND_SIZE, LIBSPDM_DATA_LOCATION_LOCAL, sizeof(uint8_t), 0 },
+};
+
+/* Session items that libspdm_get_data returns but libspdm_set_data does not store. */
+static const libspdm_test_data_item_t m_libspdm_test_read_only_session_items[] = {
+    { LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION, LIBSPDM_DATA_LOCATION_SESSION,
+      sizeof(spdm_version_number_t), 0 },
+    { LIBSPDM_DATA_SESSION_USE_PSK, LIBSPDM_DATA_LOCATION_SESSION, sizeof(bool), 0 },
+    { LIBSPDM_DATA_SESSION_MUT_AUTH_REQUESTED, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES, LIBSPDM_DATA_LOCATION_SESSION,
+      sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_SESSION_POLICY, LIBSPDM_DATA_LOCATION_SESSION, sizeof(uint8_t), 0 },
+    { LIBSPDM_DATA_SESSION_SEQUENCE_NUMBER_RSP_DIR, LIBSPDM_DATA_LOCATION_SESSION,
+      sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_SESSION_SEQUENCE_NUMBER_REQ_DIR, LIBSPDM_DATA_LOCATION_SESSION,
+      sizeof(uint64_t), 0 },
+    { LIBSPDM_DATA_SESSION_SEQUENCE_NUMBER_ENDIAN, LIBSPDM_DATA_LOCATION_SESSION,
+      sizeof(uint8_t), 0 },
+};
+
+/* Items that libspdm_get_data returns at some locations, each with a location that it rejects. */
+static const libspdm_test_data_item_t m_libspdm_test_get_wrong_location_items[] = {
+    { LIBSPDM_DATA_SPDM_VERSION, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_FLAGS, LIBSPDM_DATA_LOCATION_SESSION, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_EXT_FLAGS, LIBSPDM_DATA_LOCATION_SESSION, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_CT_EXPONENT, LIBSPDM_DATA_LOCATION_SESSION, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_DATA_TRANSFER_SIZE, LIBSPDM_DATA_LOCATION_SESSION, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_MAX_SPDM_MSG_SIZE, LIBSPDM_DATA_LOCATION_SESSION, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_SENDER_DATA_TRANSFER_SIZE, LIBSPDM_DATA_LOCATION_CONNECTION, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_SENDER_DATA_TRANSFER_SIZE, LIBSPDM_DATA_LOCATION_SESSION, 0, 0 },
+    { LIBSPDM_DATA_MEASUREMENT_SPEC, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_MEASUREMENT_HASH_ALGO, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_BASE_ASYM_ALGO, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_BASE_HASH_ALGO, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_DHE_NAME_GROUP, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_AEAD_CIPHER_SUITE, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_REQ_BASE_ASYM_ALG, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_KEY_SCHEDULE, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_OTHER_PARAMS_SUPPORT, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_MEL_SPEC, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PQC_ASYM_ALGO, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_REQ_PQC_ASYM_ALG, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_KEM_ALG, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_CONNECTION_STATE, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_PROVISIONED_SLOT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_SUPPORTED_SLOT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_CERT_INFO, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_REQ, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_MULTI_KEY_CONN_RSP, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_SESSION_POLICY, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+};
+
+/* Items that libspdm_get_data returns per slot, with the slot ID in additional_data[0]. */
+static const libspdm_test_data_item_t m_libspdm_test_get_slot_items[] = {
+    { LIBSPDM_DATA_PEER_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_CONNECTION, 0, 0 },
+    { LIBSPDM_DATA_PEER_CERT_INFO, LIBSPDM_DATA_LOCATION_CONNECTION, 0, 0 },
+    { LIBSPDM_DATA_PEER_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_CONNECTION, 0, 0 },
+};
+
+/* Items that libspdm_set_data stores but libspdm_get_data does not return. */
+static const libspdm_test_data_item_t m_libspdm_test_write_only_items[] = {
+    { LIBSPDM_DATA_SECURED_MESSAGE_VERSION, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_CAPABILITY_RTT_US, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_ALGO_PRIORITY_PQC_FIRST, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_LOCAL_SUPPORTED_SLOT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_LOCAL_KEY_PAIR_ID, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_LOCAL_CERT_INFO, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_LOCAL_KEY_USAGE_BIT_MASK, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER, LIBSPDM_DATA_LOCATION_CONNECTION, 0, 0 },
+    { LIBSPDM_DATA_PEER_PUBLIC_KEY, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_LOCAL_PUBLIC_KEY, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_HEARTBEAT_PERIOD, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_IS_REQUESTER, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_REQUEST_RETRY_TIMES, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+    { LIBSPDM_DATA_REQUEST_RETRY_DELAY_TIME, LIBSPDM_DATA_LOCATION_LOCAL, 0, 0 },
+};
+
+/**
+ * Test 35: libspdm_set_data stores each item that libspdm_get_data also returns.
+ * Expected Behavior: libspdm_get_data returns the value and size that libspdm_set_data was given.
+ **/
+static void libspdm_test_set_get_data_round_trip_case35(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    const libspdm_test_data_item_t *item;
+    libspdm_test_data_value_t data;
+    libspdm_test_data_value_t returned_data;
+    uint8_t vca[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    uint8_t returned_vca[sizeof(vca)];
+    size_t data_size;
+    size_t index;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x23;
+
+    for (index = 0; index < LIBSPDM_ARRAY_SIZE(m_libspdm_test_round_trip_items); index++) {
+        item = &m_libspdm_test_round_trip_items[index];
+        libspdm_test_encode_value(&data, item->data_size, item->value);
+        libspdm_test_init_parameter(&parameter, item->location, 0);
+        assert_int_equal(libspdm_set_data(spdm_context, item->data_type, &parameter, &data,
+                                          item->data_size),
+                         LIBSPDM_STATUS_SUCCESS);
+
+        libspdm_zero_mem(&returned_data, sizeof(returned_data));
+        data_size = sizeof(returned_data);
+        assert_int_equal(libspdm_get_data(spdm_context, item->data_type, &parameter,
+                                          &returned_data, &data_size),
+                         LIBSPDM_STATUS_SUCCESS);
+        assert_int_equal(data_size, item->data_size);
+        assert_memory_equal(&returned_data, &data, data_size);
+    }
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_VCA_CACHE, &parameter,
+                                      vca, sizeof(vca)),
+                     LIBSPDM_STATUS_SUCCESS);
+    data_size = sizeof(returned_vca);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_VCA_CACHE, &parameter,
+                                      returned_vca, &data_size),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(data_size, sizeof(vca));
+    assert_memory_equal(returned_vca, vca, sizeof(vca));
+}
+
+/**
+ * Test 36: libspdm_set_data is given each LIBSPDM_DATA_LOCATION_LOCAL item that libspdm_get_data
+ * does not return at that location.
+ * Expected Behavior: each value is stored in the local context.
+ **/
+static void libspdm_test_set_data_local_items_case36(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_local_context_t *local_context;
+    libspdm_data_parameter_t parameter;
+    spdm_version_number_t versions[2];
+    uint8_t buffer[16];
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x24;
+    local_context = &spdm_context->local_context;
+
+    versions[0] = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    versions[1] = SPDM_MESSAGE_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_SPDM_VERSION, &parameter,
+                                      versions, sizeof(versions)),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(local_context->version.spdm_version_count, 2);
+    assert_memory_equal(local_context->version.spdm_version, versions, sizeof(versions));
+
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_SECURED_MESSAGE_VERSION,
+                                      &parameter, versions, sizeof(versions[0])),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(local_context->secured_message_version.secured_message_version_count, 1);
+    assert_int_equal(local_context->secured_message_version.secured_message_version[0],
+                     versions[0]);
+
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_CAPABILITY_RTT_US, 0,
+                                sizeof(uint64_t), 1000, &local_context->capability.rtt);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_MEASUREMENT_SPEC, 0, sizeof(uint8_t),
+                                SPDM_MEASUREMENT_SPECIFICATION_DMTF,
+                                &local_context->algorithm.measurement_spec);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_MEASUREMENT_HASH_ALGO, 0,
+                                sizeof(uint32_t),
+                                SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_TPM_ALG_SHA_384,
+                                &local_context->algorithm.measurement_hash_algo);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_BASE_ASYM_ALGO, 0, sizeof(uint32_t),
+                                SPDM_ALGORITHMS_BASE_ASYM_ALGO_TPM_ALG_ECDSA_ECC_NIST_P384,
+                                &local_context->algorithm.base_asym_algo);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_BASE_HASH_ALGO, 0, sizeof(uint32_t),
+                                SPDM_ALGORITHMS_BASE_HASH_ALGO_TPM_ALG_SHA_384,
+                                &local_context->algorithm.base_hash_algo);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_DHE_NAME_GROUP, 0, sizeof(uint16_t),
+                                SPDM_ALGORITHMS_DHE_NAMED_GROUP_SECP_384_R1,
+                                &local_context->algorithm.dhe_named_group);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_AEAD_CIPHER_SUITE, 0,
+                                sizeof(uint16_t), SPDM_ALGORITHMS_AEAD_CIPHER_SUITE_AES_256_GCM,
+                                &local_context->algorithm.aead_cipher_suite);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_REQ_BASE_ASYM_ALG, 0,
+                                sizeof(uint16_t),
+                                SPDM_ALGORITHMS_BASE_ASYM_ALGO_TPM_ALG_RSASSA_3072,
+                                &local_context->algorithm.req_base_asym_alg);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_KEY_SCHEDULE, 0, sizeof(uint16_t),
+                                SPDM_ALGORITHMS_KEY_SCHEDULE_SPDM,
+                                &local_context->algorithm.key_schedule);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_OTHER_PARAMS_SUPPORT, 0,
+                                sizeof(uint8_t), SPDM_ALGORITHMS_OPAQUE_DATA_FORMAT_1,
+                                &local_context->algorithm.other_params_support);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_MEL_SPEC, 0, sizeof(uint8_t),
+                                SPDM_MEL_SPECIFICATION_DMTF, &local_context->algorithm.mel_spec);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_PQC_ASYM_ALGO, 0, sizeof(uint32_t),
+                                SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_65,
+                                &local_context->algorithm.pqc_asym_algo);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_REQ_PQC_ASYM_ALG, 0, sizeof(uint32_t),
+                                SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_65,
+                                &local_context->algorithm.req_pqc_asym_alg);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_KEM_ALG, 0, sizeof(uint32_t),
+                                SPDM_ALGORITHMS_KEM_ALG_ML_KEM_768,
+                                &local_context->algorithm.kem_alg);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_ALGO_PRIORITY_PQC_FIRST, 0,
+                                sizeof(bool), true, &local_context->algorithm.pqc_first);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_LOCAL_SUPPORTED_SLOT_MASK, 0,
+                                sizeof(uint8_t), 0x03, &local_context->local_supported_slot_mask);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_LOCAL_KEY_PAIR_ID, 1,
+                                sizeof(spdm_key_pair_id_t), 2,
+                                &local_context->local_key_pair_id[1]);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_LOCAL_CERT_INFO, 1,
+                                sizeof(spdm_certificate_info_t), 1,
+                                &local_context->local_cert_info[1]);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_LOCAL_KEY_USAGE_BIT_MASK, 1,
+                                sizeof(spdm_key_usage_bit_mask_t), 0x0003,
+                                &local_context->local_key_usage_bit_mask[1]);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_HEARTBEAT_PERIOD, 0, sizeof(uint8_t),
+                                5, &local_context->heartbeat_period);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_IS_REQUESTER, 0, sizeof(bool), false,
+                                &local_context->is_requester);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_REQUEST_RETRY_TIMES, 0,
+                                sizeof(uint8_t), 3, &spdm_context->retry_times);
+    libspdm_test_set_local_item(spdm_context, LIBSPDM_DATA_REQUEST_RETRY_DELAY_TIME, 0,
+                                sizeof(uint64_t), 100, &spdm_context->retry_delay_time);
+
+    libspdm_set_mem(buffer, sizeof(buffer), 0x5a);
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 1);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN,
+                                      &parameter, buffer, sizeof(buffer)),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_ptr_equal(local_context->local_cert_chain_provision[1], buffer);
+    assert_int_equal(local_context->local_cert_chain_provision_size[1], sizeof(buffer));
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_PUBLIC_KEY, &parameter,
+                                      buffer, sizeof(buffer)),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_ptr_equal(local_context->peer_public_key_provision, buffer);
+    assert_int_equal(local_context->peer_public_key_provision_size, sizeof(buffer));
+
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_LOCAL_PUBLIC_KEY, &parameter,
+                                      buffer, sizeof(buffer) - 1),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_ptr_equal(local_context->local_public_key_provision, buffer);
+    assert_int_equal(local_context->local_public_key_provision_size, sizeof(buffer) - 1);
+}
+
+/**
+ * Test 37: libspdm_set_data sets LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER to 0.
+ * Expected Behavior: 0 selects the default, LIBSPDM_MAX_SPDM_SESSION_SEQUENCE_NUMBER.
+ **/
+static void libspdm_test_set_data_default_max_sequence_number_case37(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    uint64_t max_sequence_number;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x25;
+
+    spdm_context->max_spdm_session_sequence_number = 0xFF;
+    max_sequence_number = 0;
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER,
+                                      &parameter, &max_sequence_number,
+                                      sizeof(max_sequence_number)),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_true(spdm_context->max_spdm_session_sequence_number ==
+                LIBSPDM_MAX_SPDM_SESSION_SEQUENCE_NUMBER);
+}
+
+/**
+ * Test 38: libspdm_set_data is given a data_size that the item does not accept.
+ * Expected Behavior: libspdm_set_data returns LIBSPDM_STATUS_INVALID_PARAMETER for each item.
+ **/
+static void libspdm_test_set_data_wrong_size_case38(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x26;
+
+    libspdm_test_set_data_items(spdm_test_context->spdm_context, m_libspdm_test_wrong_size_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_wrong_size_items), 0,
+                                LIBSPDM_STATUS_INVALID_PARAMETER);
+}
+
+/**
+ * Test 39: libspdm_set_data is given a location that the item does not support.
+ * Expected Behavior: libspdm_set_data returns LIBSPDM_STATUS_INVALID_PARAMETER for each item.
+ **/
+static void libspdm_test_set_data_wrong_location_case39(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x27;
+
+    libspdm_test_set_data_items(spdm_test_context->spdm_context,
+                                m_libspdm_test_set_wrong_location_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_set_wrong_location_items), 0,
+                                LIBSPDM_STATUS_INVALID_PARAMETER);
+}
+
+/**
+ * Test 40: libspdm_set_data is given a slot ID of SPDM_MAX_SLOT_COUNT for an item that is stored
+ * per slot.
+ * Expected Behavior: libspdm_set_data returns LIBSPDM_STATUS_INVALID_PARAMETER for each item.
+ **/
+static void libspdm_test_set_data_invalid_slot_case40(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x28;
+
+    libspdm_test_set_data_items(spdm_test_context->spdm_context, m_libspdm_test_set_slot_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_set_slot_items),
+                                SPDM_MAX_SLOT_COUNT, LIBSPDM_STATUS_INVALID_PARAMETER);
+}
+
+/**
+ * Test 41: libspdm_set_data is given a NULL context, an out-of-range data type, a session that
+ * does not exist, or a value that the item does not accept.
+ * Expected Behavior: libspdm_set_data returns LIBSPDM_STATUS_INVALID_PARAMETER for each.
+ **/
+static void libspdm_test_set_data_invalid_value_case41(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    uint32_t response_state;
+    void *app_context_data;
+    uint32_t session_count;
+    uint8_t data8;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x29;
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    data8 = 0;
+    assert_int_equal(libspdm_set_data(NULL, LIBSPDM_DATA_HEARTBEAT_PERIOD, &parameter, &data8,
+                                      sizeof(data8)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_MAX, &parameter, &data8,
+                                      sizeof(data8)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    response_state = LIBSPDM_RESPONSE_STATE_MAX;
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_RESPONSE_STATE, &parameter,
+                                      &response_state, sizeof(libspdm_response_state_t)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    app_context_data = NULL;
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_APP_CONTEXT_DATA, &parameter,
+                                      &app_context_data, sizeof(app_context_data)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    session_count = LIBSPDM_MAX_SESSION_COUNT + 1;
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_MAX_DHE_SESSION_COUNT,
+                                      &parameter, &session_count, sizeof(session_count)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    spdm_context->max_dhe_session_count = LIBSPDM_MAX_SESSION_COUNT;
+    session_count = 1;
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_MAX_PSK_SESSION_COUNT,
+                                      &parameter, &session_count, sizeof(session_count)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    data8 = LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE + 1;
+    assert_int_equal(libspdm_set_data(spdm_context,
+                                      LIBSPDM_DATA_SPDM_VERSION_10_11_VERIFY_SIGNATURE_ENDIAN,
+                                      &parameter, &data8, sizeof(data8)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_SESSION,
+                                LIBSPDM_TEST_SESSION_ID);
+    data8 = 0;
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_SESSION_POLICY, &parameter,
+                                      &data8, sizeof(data8)),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+}
+
+/**
+ * Test 42: libspdm_set_data is given an item that libspdm_get_data returns but that the
+ * Integrator cannot set.
+ * Expected Behavior: libspdm_set_data returns LIBSPDM_STATUS_UNSUPPORTED_CAP for each item,
+ * including the session items of a session that exists.
+ **/
+static void libspdm_test_set_data_read_only_case42(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x2A;
+
+    libspdm_test_set_data_items(spdm_context, m_libspdm_test_read_only_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_read_only_items), 0,
+                                LIBSPDM_STATUS_UNSUPPORTED_CAP);
+
+    libspdm_test_start_session(spdm_context, false);
+    libspdm_test_set_data_items(spdm_context, m_libspdm_test_read_only_session_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_read_only_session_items),
+                                LIBSPDM_TEST_SESSION_ID, LIBSPDM_STATUS_UNSUPPORTED_CAP);
+}
+
+/**
+ * Test 43: libspdm_get_data is given a location that the item does not support.
+ * Expected Behavior: libspdm_get_data returns LIBSPDM_STATUS_INVALID_PARAMETER for each item.
+ **/
+static void libspdm_test_get_data_wrong_location_case43(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x2B;
+
+    libspdm_test_get_data_items(spdm_test_context->spdm_context,
+                                m_libspdm_test_get_wrong_location_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_get_wrong_location_items), 0,
+                                LIBSPDM_STATUS_INVALID_PARAMETER);
+}
+
+/**
+ * Test 44: libspdm_get_data is given a NULL argument, an out-of-range data type, a slot ID of
+ * SPDM_MAX_SLOT_COUNT, or a session that does not exist.
+ * Expected Behavior: libspdm_get_data returns LIBSPDM_STATUS_INVALID_PARAMETER for each.
+ **/
+static void libspdm_test_get_data_invalid_parameter_case44(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    uint64_t data;
+    size_t data_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x2C;
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    data_size = sizeof(data);
+    assert_int_equal(libspdm_get_data(NULL, LIBSPDM_DATA_CAPABILITY_FLAGS, &parameter, &data,
+                                      &data_size),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_CAPABILITY_FLAGS, &parameter,
+                                      NULL, &data_size),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_CAPABILITY_FLAGS, &parameter,
+                                      &data, NULL),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_MAX, &parameter, &data,
+                                      &data_size),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    libspdm_test_get_data_items(spdm_context, m_libspdm_test_get_slot_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_get_slot_items),
+                                SPDM_MAX_SLOT_COUNT, LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_SESSION,
+                                LIBSPDM_TEST_SESSION_ID);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_SESSION_POLICY, &parameter,
+                                      &data, &data_size),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER,
+                                      &parameter, &data, &data_size),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+}
+
+/**
+ * Test 45: libspdm_get_data is given an item that the Integrator can set but not get.
+ * Expected Behavior: libspdm_get_data returns LIBSPDM_STATUS_UNSUPPORTED_CAP for each item.
+ **/
+static void libspdm_test_get_data_write_only_case45(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x2D;
+
+    libspdm_test_get_data_items(spdm_test_context->spdm_context, m_libspdm_test_write_only_items,
+                                LIBSPDM_ARRAY_SIZE(m_libspdm_test_write_only_items), 0,
+                                LIBSPDM_STATUS_UNSUPPORTED_CAP);
+}
+
+/**
+ * Test 46: libspdm_get_data is given each item outside of a session that libspdm sets and the
+ * Integrator can only read.
+ * Expected Behavior: libspdm_get_data returns the value that libspdm holds for each item.
+ **/
+static void libspdm_test_get_data_read_only_case46(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_connection_info_t *connection_info;
+    libspdm_data_parameter_t parameter;
+    uint8_t request[4];
+    uint8_t returned_request[sizeof(request)];
+    size_t data_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x2E;
+    connection_info = &spdm_context->connection_info;
+
+    connection_info->capability.data_transfer_size = 0x1234;
+    connection_info->peer_provisioned_slot_mask = 0x05;
+    connection_info->peer_supported_slot_mask = 0x07;
+    connection_info->peer_key_pair_id[1] = 4;
+    connection_info->peer_cert_info[1] = 2;
+    connection_info->peer_key_usage_bit_mask[1] = 0x0002;
+    connection_info->end_session_attributes =
+        SPDM_END_SESSION_REQUEST_ATTRIBUTES_PRESERVE_NEGOTIATED_STATE_CLEAR;
+
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_CAPABILITY_DATA_TRANSFER_SIZE,
+                          LIBSPDM_DATA_LOCATION_LOCAL, 0,
+                          &spdm_context->local_context.capability.data_transfer_size,
+                          sizeof(uint32_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_CAPABILITY_DATA_TRANSFER_SIZE,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 0,
+                          &connection_info->capability.data_transfer_size, sizeof(uint32_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_CAPABILITY_MAX_SPDM_MSG_SIZE,
+                          LIBSPDM_DATA_LOCATION_LOCAL, 0,
+                          &spdm_context->local_context.capability.max_spdm_msg_size,
+                          sizeof(uint32_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_CAPABILITY_SENDER_DATA_TRANSFER_SIZE,
+                          LIBSPDM_DATA_LOCATION_LOCAL, 0,
+                          &spdm_context->local_context.capability.sender_data_transfer_size,
+                          sizeof(uint32_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_PEER_PROVISIONED_SLOT_MASK,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 0,
+                          &connection_info->peer_provisioned_slot_mask, sizeof(uint8_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_PEER_SUPPORTED_SLOT_MASK,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 0,
+                          &connection_info->peer_supported_slot_mask, sizeof(uint8_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_PEER_KEY_PAIR_ID,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 1,
+                          &connection_info->peer_key_pair_id[1], sizeof(spdm_key_pair_id_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_PEER_CERT_INFO,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 1,
+                          &connection_info->peer_cert_info[1], sizeof(spdm_certificate_info_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_PEER_KEY_USAGE_BIT_MASK,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 1,
+                          &connection_info->peer_key_usage_bit_mask[1],
+                          sizeof(spdm_key_usage_bit_mask_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, 0,
+                          &connection_info->end_session_attributes, sizeof(uint8_t));
+
+    request[0] = SPDM_MESSAGE_VERSION_12;
+    request[1] = SPDM_GET_VERSION;
+    request[2] = 0;
+    request[3] = 0;
+    libspdm_copy_mem(spdm_context->last_spdm_request,
+                     libspdm_get_scratch_buffer_last_spdm_request_capacity(spdm_context),
+                     request, sizeof(request));
+    spdm_context->last_spdm_request_size = sizeof(request);
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_LOCAL, 0);
+    data_size = sizeof(returned_request);
+    assert_int_equal(libspdm_get_data(spdm_context, LIBSPDM_DATA_REQUEST_AND_SIZE, &parameter,
+                                      returned_request, &data_size),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(data_size, sizeof(request));
+    assert_memory_equal(returned_request, request, sizeof(request));
+}
+
+/**
+ * Test 47: libspdm_get_data is given each session item for a session that exists.
+ * Expected Behavior: libspdm_get_data returns the session's value for each item.
+ **/
+static void libspdm_test_get_data_session_items_case47(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    libspdm_secured_message_context_t *secured_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x2F;
+
+    session_info = libspdm_test_start_session(spdm_context, true);
+    secured_context = session_info->secured_message_context;
+    session_info->mut_auth_requested = SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED;
+    session_info->end_session_attributes =
+        SPDM_END_SESSION_REQUEST_ATTRIBUTES_PRESERVE_NEGOTIATED_STATE_CLEAR;
+    session_info->session_policy = 0x01;
+    secured_context->application_secret.request_data_sequence_number = 5;
+    secured_context->application_secret.response_data_sequence_number = 6;
+    secured_context->max_spdm_session_sequence_number = 0xFFFF;
+    secured_context->sequence_number_endian = LIBSPDM_DATA_SESSION_SEQ_NUM_ENC_BIG_DEC_BIG;
+
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &secured_context->secured_message_version,
+                          sizeof(spdm_version_number_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_USE_PSK,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &session_info->use_psk, sizeof(bool));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_MUT_AUTH_REQUESTED,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &session_info->mut_auth_requested, sizeof(uint8_t));
+    /* LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES is read at LIBSPDM_DATA_LOCATION_CONNECTION. */
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES,
+                          LIBSPDM_DATA_LOCATION_CONNECTION, LIBSPDM_TEST_SESSION_ID,
+                          &session_info->end_session_attributes, sizeof(uint8_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_POLICY,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &session_info->session_policy, sizeof(uint8_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_SEQUENCE_NUMBER_REQ_DIR,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &secured_context->application_secret.request_data_sequence_number,
+                          sizeof(uint64_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_SEQUENCE_NUMBER_RSP_DIR,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &secured_context->application_secret.response_data_sequence_number,
+                          sizeof(uint64_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &secured_context->max_spdm_session_sequence_number, sizeof(uint64_t));
+    libspdm_test_get_item(spdm_context, LIBSPDM_DATA_SESSION_SEQUENCE_NUMBER_ENDIAN,
+                          LIBSPDM_DATA_LOCATION_SESSION, LIBSPDM_TEST_SESSION_ID,
+                          &secured_context->sequence_number_endian, sizeof(uint8_t));
+}
+
+/**
+ * Test 48: libspdm_set_data sets LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER to a buffer that is not
+ * a certificate chain, with a traditional and then with a PQC asymmetric algorithm negotiated.
+ * Expected Behavior: the leaf certificate's public key cannot be parsed, so libspdm_set_data
+ * returns LIBSPDM_STATUS_INVALID_CERT in both cases. Skipped if
+ * LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled or LIBSPDM_CERT_PARSE_SUPPORT is disabled, as
+ * libspdm then does not parse the chain.
+ **/
+static void libspdm_test_set_data_peer_cert_chain_invalid_case48(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_data_parameter_t parameter;
+    uint8_t cert_chain[64];
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x30;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    libspdm_set_mem(cert_chain, sizeof(cert_chain), 0xa5);
+
+    libspdm_test_init_parameter(&parameter, LIBSPDM_DATA_LOCATION_CONNECTION, 0);
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER,
+                                      &parameter, cert_chain, sizeof(cert_chain)),
+                     LIBSPDM_STATUS_INVALID_CERT);
+
+    spdm_context->connection_info.algorithm.pqc_asym_algo =
+        SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_65;
+    assert_int_equal(libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_USED_CERT_CHAIN_BUFFER,
+                                      &parameter, cert_chain, sizeof(cert_chain)),
+                     LIBSPDM_STATUS_INVALID_CERT);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 49: libspdm_is_version_supported is asked about the connection version and another version.
+ * Expected Behavior: only the connection version is supported.
+ **/
+static void libspdm_test_is_version_supported_case49(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x31;
+
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+
+    assert_true(libspdm_is_version_supported(spdm_context, SPDM_MESSAGE_VERSION_12));
+    assert_false(libspdm_is_version_supported(spdm_context, SPDM_MESSAGE_VERSION_11));
+}
+
+/**
+ * Test 50: libspdm_is_capabilities_ext_flag_supported is asked about extended capability flags
+ * from the Requester's and the Responder's point of view.
+ * Expected Behavior: the Requester's flags are the local flags of a Requester and the connection's
+ * flags of a Responder, and the Responder's flags are the other set.
+ **/
+static void libspdm_test_is_capabilities_ext_flag_supported_case50(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x32;
+
+    spdm_context->local_context.capability.ext_flags = 0x0001;
+    spdm_context->connection_info.capability.ext_flags = 0x0002;
+
+    assert_true(libspdm_is_capabilities_ext_flag_supported(spdm_context, true, 0x0001, 0x0002));
+    assert_false(libspdm_is_capabilities_ext_flag_supported(spdm_context, true, 0x0002, 0));
+    assert_true(libspdm_is_capabilities_ext_flag_supported(spdm_context, false, 0x0002, 0x0001));
+    assert_false(libspdm_is_capabilities_ext_flag_supported(spdm_context, false, 0, 0x0002));
+}
+
+/**
+ * Test 51: libspdm_is_encap_supported is called for an SPDM 1.0 connection in which both
+ * endpoints set ENCAP_CAP.
+ * Expected Behavior: SPDM 1.0 has no encapsulated requests, so it returns false.
+ **/
+static void libspdm_test_is_encap_supported_10_case51(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x33;
+
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_10 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->local_context.capability.flags = SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCAP_CAP;
+    spdm_context->connection_info.capability.flags =
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ENCAP_CAP;
+
+    assert_false(libspdm_is_encap_supported(spdm_context));
+}
+
+/**
+ * Test 52: libspdm_is_encap_supported is called for an SPDM 1.2 connection in which both
+ * endpoints set MUT_AUTH_CAP but not ENCAP_CAP.
+ * Expected Behavior: ENCAP_CAP was deprecated in SPDM 1.2.0 and 1.2.1 and MUT_AUTH_CAP was used in
+ * its place, so it returns true.
+ **/
+static void libspdm_test_is_encap_supported_12_case52(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x34;
+
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->local_context.capability.flags =
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MUT_AUTH_CAP;
+    spdm_context->connection_info.capability.flags =
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MUT_AUTH_CAP;
+
+    assert_true(libspdm_is_encap_supported(spdm_context));
+}
+
+/**
+ * Test 53: The device buffers are registered before the transport layer.
+ * Expected Behavior: the data transfer sizes are first the whole buffer sizes, and
+ * libspdm_register_transport_layer_func then removes the transport header and tail from them.
+ **/
+static void libspdm_test_register_transport_after_buffer_case53(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x35;
+
+    spdm_context = (libspdm_context_t *)malloc(libspdm_get_context_size());
+    assert_non_null(spdm_context);
+    libspdm_init_context(spdm_context);
+
+    libspdm_register_device_buffer_func(spdm_context,
+                                        LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE,
+                                        LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE,
+                                        spdm_device_acquire_sender_buffer,
+                                        spdm_device_release_sender_buffer,
+                                        spdm_device_acquire_receiver_buffer,
+                                        spdm_device_release_receiver_buffer);
+    assert_int_equal(spdm_context->local_context.capability.data_transfer_size,
+                     LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE);
+    assert_int_equal(spdm_context->local_context.capability.sender_data_transfer_size,
+                     LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE);
+
+    libspdm_register_transport_layer_func(spdm_context,
+                                          LIBSPDM_MAX_SPDM_MSG_SIZE,
+                                          LIBSPDM_TEST_TRANSPORT_HEADER_SIZE,
+                                          LIBSPDM_TEST_TRANSPORT_TAIL_SIZE,
+                                          libspdm_transport_test_encode_message,
+                                          libspdm_transport_test_decode_message);
+    assert_int_equal(spdm_context->local_context.capability.data_transfer_size,
+                     LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE -
+                     (LIBSPDM_TEST_TRANSPORT_HEADER_SIZE + LIBSPDM_TEST_TRANSPORT_TAIL_SIZE));
+    assert_int_equal(spdm_context->local_context.capability.sender_data_transfer_size,
+                     LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE -
+                     (LIBSPDM_TEST_TRANSPORT_HEADER_SIZE + LIBSPDM_TEST_TRANSPORT_TAIL_SIZE));
+
+    libspdm_deinit_context(spdm_context);
+    free(spdm_context);
+}
+
+static bool libspdm_test_verify_spdm_cert_chain(void *spdm_context, uint8_t slot_id,
+                                                size_t cert_chain_size, const void *cert_chain,
+                                                const void **trust_anchor,
+                                                size_t *trust_anchor_size)
+{
+    return true;
+}
+
+/**
+ * Test 54: The Integrator registers a certificate chain verification function.
+ * Expected Behavior: libspdm stores the function for verifying the peer's certificate chain.
+ **/
+static void libspdm_test_register_verify_spdm_cert_chain_func_case54(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x36;
+
+    libspdm_register_verify_spdm_cert_chain_func(spdm_context,
+                                                 libspdm_test_verify_spdm_cert_chain);
+    assert_true(spdm_context->local_context.verify_peer_spdm_cert_chain ==
+                libspdm_test_verify_spdm_cert_chain);
+}
+
+/**
+ * Test 55: libspdm_get_receiver_buffer is called while the receiver buffer is acquired.
+ * Expected Behavior: it returns the Integrator's receiver buffer and its registered size.
+ **/
+static void libspdm_test_get_receiver_buffer_case55(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    void *message;
+    size_t message_size;
+    void *receiver_buffer;
+    size_t receiver_buffer_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x37;
+
+    assert_int_equal(libspdm_acquire_receiver_buffer(spdm_context, &message_size, &message),
+                     LIBSPDM_STATUS_SUCCESS);
+    libspdm_get_receiver_buffer(spdm_context, &receiver_buffer, &receiver_buffer_size);
+    libspdm_release_receiver_buffer(spdm_context);
+
+    assert_non_null(receiver_buffer);
+    assert_int_equal(receiver_buffer_size, LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE);
+}
+
+/**
+ * Test 56: libspdm_get_last_spdm_error_struct is called after libspdm_set_last_spdm_error_struct.
+ * Expected Behavior: it returns the error code and session ID that were set.
+ **/
+static void libspdm_test_last_spdm_error_struct_case56(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_error_struct_t last_spdm_error;
+    libspdm_error_struct_t returned_error;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x38;
+
+    libspdm_zero_mem(&last_spdm_error, sizeof(last_spdm_error));
+    last_spdm_error.error_code = SPDM_ERROR_CODE_DECRYPT_ERROR;
+    last_spdm_error.session_id = LIBSPDM_TEST_SESSION_ID;
+    libspdm_set_last_spdm_error_struct(spdm_context, &last_spdm_error);
+
+    libspdm_zero_mem(&returned_error, sizeof(returned_error));
+    libspdm_get_last_spdm_error_struct(spdm_context, &returned_error);
+    assert_int_equal(returned_error.error_code, SPDM_ERROR_CODE_DECRYPT_ERROR);
+    assert_int_equal(returned_error.session_id, LIBSPDM_TEST_SESSION_ID);
+}
+
+/**
+ * Test 57: The Integrator initializes a FIPS self-test context, imports it into the SPDM context,
+ * and exports it again.
+ * Expected Behavior: each step succeeds and the exported context matches the imported one.
+ * Skipped if LIBSPDM_FIPS_MODE is disabled.
+ **/
+static void libspdm_test_fips_selftest_context_case57(void **state)
+{
+#if LIBSPDM_FIPS_MODE
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t context_size;
+    void *fips_selftest_context;
+    void *exported_context;
+    uint8_t *selftest_buffer;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x39;
+
+    context_size = libspdm_get_fips_selftest_context_size();
+    fips_selftest_context = malloc(context_size);
+    exported_context = malloc(context_size);
+    selftest_buffer = malloc(libspdm_get_fips_selftest_buffer_size() + 1);
+    assert_non_null(fips_selftest_context);
+    assert_non_null(exported_context);
+    assert_non_null(selftest_buffer);
+
+    assert_int_equal(libspdm_init_fips_selftest_context(fips_selftest_context,
+                                                        libspdm_get_fips_selftest_buffer_size(),
+                                                        selftest_buffer),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_true(libspdm_import_fips_selftest_context_to_spdm_context(spdm_context,
+                                                                     fips_selftest_context,
+                                                                     context_size));
+    libspdm_zero_mem(exported_context, context_size);
+    assert_true(libspdm_export_fips_selftest_context_from_spdm_context(spdm_context,
+                                                                       exported_context,
+                                                                       context_size));
+    assert_memory_equal(exported_context, fips_selftest_context, context_size);
+
+    free(selftest_buffer);
+    free(exported_context);
+    free(fips_selftest_context);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 58: A FIPS self-test context is imported or exported with a NULL context or a wrong size.
+ * Expected Behavior: libspdm_import_fips_selftest_context_to_spdm_context and
+ * libspdm_export_fips_selftest_context_from_spdm_context return false. Skipped if
+ * LIBSPDM_FIPS_MODE is disabled.
+ **/
+static void libspdm_test_fips_selftest_context_invalid_case58(void **state)
+{
+#if LIBSPDM_FIPS_MODE
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t context_size;
+    void *fips_selftest_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x3A;
+
+    context_size = libspdm_get_fips_selftest_context_size();
+    fips_selftest_context = malloc(context_size);
+    assert_non_null(fips_selftest_context);
+    libspdm_zero_mem(fips_selftest_context, context_size);
+
+    assert_false(libspdm_import_fips_selftest_context_to_spdm_context(NULL, fips_selftest_context,
+                                                                      context_size));
+    assert_false(libspdm_import_fips_selftest_context_to_spdm_context(spdm_context, NULL,
+                                                                      context_size));
+    assert_false(libspdm_import_fips_selftest_context_to_spdm_context(spdm_context,
+                                                                      fips_selftest_context,
+                                                                      context_size - 1));
+    assert_false(libspdm_export_fips_selftest_context_from_spdm_context(NULL,
+                                                                        fips_selftest_context,
+                                                                        context_size));
+    assert_false(libspdm_export_fips_selftest_context_from_spdm_context(spdm_context, NULL,
+                                                                        context_size));
+    assert_false(libspdm_export_fips_selftest_context_from_spdm_context(spdm_context,
+                                                                        fips_selftest_context,
+                                                                        context_size - 1));
+
+    free(fips_selftest_context);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 59: The sender data transfer size is below SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12.
+ * Expected Behavior: libspdm_check_context returns false. Skipped if LIBSPDM_CHECK_SPDM_CONTEXT is
+ * disabled.
+ **/
+static void libspdm_test_check_context_sender_size_case59(void **state)
+{
+#if LIBSPDM_CHECK_SPDM_CONTEXT
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x3B;
+
+    spdm_context->local_context.capability.sender_data_transfer_size =
+        SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12 - 1;
+
+    assert_false(libspdm_check_context(spdm_context));
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 60: The maximum SPDM message size is smaller than the sender data transfer size.
+ * Expected Behavior: libspdm_check_context returns false. Skipped if LIBSPDM_CHECK_SPDM_CONTEXT is
+ * disabled.
+ **/
+static void libspdm_test_check_context_sender_max_msg_size_case60(void **state)
+{
+#if LIBSPDM_CHECK_SPDM_CONTEXT
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x3C;
+
+    spdm_context->local_context.capability.sender_data_transfer_size =
+        spdm_context->local_context.capability.max_spdm_msg_size + 1;
+
+    assert_false(libspdm_check_context(spdm_context));
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 61: CHUNK_CAP is set and a local certificate chain does not fit in a CERTIFICATE response
+ * of the maximum SPDM message size.
+ * Expected Behavior: libspdm_check_context returns false. Skipped if LIBSPDM_CHECK_SPDM_CONTEXT is
+ * disabled.
+ **/
+static void libspdm_test_check_context_cert_chain_size_case61(void **state)
+{
+#if LIBSPDM_CHECK_SPDM_CONTEXT
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    uint8_t cert_chain;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x3D;
+
+    cert_chain = 0;
+    spdm_context->local_context.capability.flags |= SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHUNK_CAP;
+    spdm_context->local_context.local_cert_chain_provision[1] = &cert_chain;
+    spdm_context->local_context.local_cert_chain_provision_size[1] =
+        spdm_context->local_context.capability.max_spdm_msg_size;
+
+    assert_false(libspdm_check_context(spdm_context));
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 62: libspdm_init_context_with_secured_context is given a NULL secured message context.
+ * Expected Behavior: it returns LIBSPDM_STATUS_INVALID_PARAMETER.
+ **/
+static void libspdm_test_init_context_null_secured_context_case62(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    void *spdm_context;
+    void *secured_contexts[LIBSPDM_MAX_SESSION_COUNT];
+    uint8_t *secured_context_buffer;
+    size_t secured_context_size;
+    size_t index;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x3E;
+
+    spdm_context = malloc(libspdm_get_context_size_without_secured_context());
+    secured_context_size = libspdm_secured_message_get_context_size();
+    secured_context_buffer = malloc(secured_context_size * LIBSPDM_MAX_SESSION_COUNT);
+    assert_non_null(spdm_context);
+    assert_non_null(secured_context_buffer);
+    for (index = 0; index < LIBSPDM_MAX_SESSION_COUNT; index++) {
+        secured_contexts[index] = secured_context_buffer + index * secured_context_size;
+    }
+    secured_contexts[LIBSPDM_MAX_SESSION_COUNT - 1] = NULL;
+
+    assert_int_equal(libspdm_init_context_with_secured_context(spdm_context, secured_contexts,
+                                                               LIBSPDM_MAX_SESSION_COUNT),
+                     LIBSPDM_STATUS_INVALID_PARAMETER);
+
+    free(secured_context_buffer);
+    free(spdm_context);
+}
+
+/**
+ * Test 63: libspdm_reset_message_c is called while the M1/M2 transcript is being hashed.
+ * Expected Behavior: the M1/M2 hash context is freed. Skipped if
+ * LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript is then recorded rather
+ * than hashed.
+ **/
+static void libspdm_test_reset_message_c_case63(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_GET_DIGESTS, 0, 0 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x3F;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    assert_int_equal(libspdm_append_message_b(spdm_context, message, sizeof(message)),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_non_null(spdm_context->transcript.digest_context_m1m2);
+
+    libspdm_reset_message_c(spdm_context);
+
+    assert_null(spdm_context->transcript.digest_context_m1m2);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 64: A GET_MEASUREMENTS request is added to the L1/L2 transcript of a session of an SPDM 1.2
+ * connection.
+ * Expected Behavior: as of SPDM 1.2 the transcript starts with the VCA messages, so the session's
+ * L1/L2 hash covers the VCA followed by the request. Skipped if
+ * LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript is then recorded rather
+ * than hashed.
+ **/
+static void libspdm_test_append_message_m_session_case64(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t vca[] = { 0x10, 0x11, 0x12 };
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_GET_MEASUREMENTS, 0, 0 };
+    uint8_t expected[sizeof(vca) + sizeof(message)];
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x40;
+
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    assert_int_equal(libspdm_append_message_a(spdm_context, vca, sizeof(vca)),
+                     LIBSPDM_STATUS_SUCCESS);
+    session_info = libspdm_test_start_session(spdm_context, false);
+
+    assert_int_equal(libspdm_append_message_m(spdm_context, session_info, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_SUCCESS);
+
+    libspdm_copy_mem(expected, sizeof(expected), vca, sizeof(vca));
+    libspdm_copy_mem(expected + sizeof(vca), sizeof(expected) - sizeof(vca),
+                     message, sizeof(message));
+    libspdm_test_assert_digest(m_libspdm_use_hash_algo,
+                               session_info->session_transcript.digest_context_l1l2,
+                               expected, sizeof(expected));
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 65: A Requester adds KEY_EXCHANGE to the transcript of a session with a Responder that
+ * negotiated multiple asymmetric keys.
+ * Expected Behavior: the transcript hash covers the VCA, the connection's DIGESTS, the hash of the
+ * Responder's certificate chain, and the request. Skipped if
+ * LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript is then recorded rather
+ * than hashed.
+ **/
+static void libspdm_test_append_message_k_multi_key_case65(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t vca[] = { 0x10, 0x11, 0x12 };
+    uint8_t digests[] = { 0x20, 0x21 };
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_13, SPDM_KEY_EXCHANGE, 0, 0 };
+    uint8_t expected[sizeof(vca) + sizeof(digests) + LIBSPDM_MAX_HASH_SIZE + sizeof(message)];
+    uint32_t hash_size;
+    size_t expected_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x41;
+
+    hash_size = libspdm_get_hash_size(m_libspdm_use_hash_algo);
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.multi_key_conn_rsp = true;
+    spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size = hash_size;
+    libspdm_set_mem(spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash,
+                    hash_size, 0x30);
+    assert_int_equal(libspdm_append_message_a(spdm_context, vca, sizeof(vca)),
+                     LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(libspdm_append_message_d(spdm_context, digests, sizeof(digests)),
+                     LIBSPDM_STATUS_SUCCESS);
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->peer_used_cert_chain_slot_id = 0;
+
+    assert_int_equal(libspdm_append_message_k(spdm_context, session_info, true, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_SUCCESS);
+
+    expected_size = 0;
+    libspdm_copy_mem(expected, sizeof(expected), vca, sizeof(vca));
+    expected_size += sizeof(vca);
+    libspdm_copy_mem(expected + expected_size, sizeof(expected) - expected_size,
+                     digests, sizeof(digests));
+    expected_size += sizeof(digests);
+    libspdm_copy_mem(expected + expected_size, sizeof(expected) - expected_size,
+                     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash, hash_size);
+    expected_size += hash_size;
+    libspdm_copy_mem(expected + expected_size, sizeof(expected) - expected_size,
+                     message, sizeof(message));
+    expected_size += sizeof(message);
+    libspdm_test_assert_digest(m_libspdm_use_hash_algo,
+                               session_info->session_transcript.digest_context_th,
+                               expected, expected_size);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 66: A Requester that negotiated multiple asymmetric keys adds FINISH to the transcript of a
+ * session with mutual authentication.
+ * Expected Behavior: the transcript hash covers the VCA, the hash of the Responder's certificate
+ * chain, the encapsulated DIGESTS, the hash of the Requester's certificate chain, and the request.
+ * Skipped if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript is then
+ * recorded rather than hashed.
+ **/
+static void libspdm_test_append_message_f_multi_key_case66(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t vca[] = { 0x10, 0x11, 0x12 };
+    uint8_t encap_digests[] = { 0x40, 0x41 };
+    uint8_t local_cert_chain[] = { 0x50, 0x51, 0x52, 0x53 };
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_13, SPDM_FINISH, 0, 0 };
+    uint8_t expected[sizeof(vca) + LIBSPDM_MAX_HASH_SIZE + sizeof(encap_digests) +
+                     LIBSPDM_MAX_HASH_SIZE + sizeof(message)];
+    uint32_t hash_size;
+    size_t expected_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x42;
+
+    hash_size = libspdm_get_hash_size(m_libspdm_use_hash_algo);
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.multi_key_conn_req = true;
+    spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size = hash_size;
+    libspdm_set_mem(spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash,
+                    hash_size, 0x30);
+    spdm_context->local_context.local_cert_chain_provision[0] = local_cert_chain;
+    spdm_context->local_context.local_cert_chain_provision_size[0] = sizeof(local_cert_chain);
+    assert_int_equal(libspdm_append_message_a(spdm_context, vca, sizeof(vca)),
+                     LIBSPDM_STATUS_SUCCESS);
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->peer_used_cert_chain_slot_id = 0;
+    session_info->local_used_cert_chain_slot_id = 0;
+    session_info->mut_auth_requested = SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED;
+    assert_int_equal(libspdm_append_message_encap_d(session_info, encap_digests,
+                                                    sizeof(encap_digests)),
+                     LIBSPDM_STATUS_SUCCESS);
+
+    assert_int_equal(libspdm_append_message_f(spdm_context, session_info, true, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_SUCCESS);
+
+    expected_size = 0;
+    libspdm_copy_mem(expected, sizeof(expected), vca, sizeof(vca));
+    expected_size += sizeof(vca);
+    libspdm_copy_mem(expected + expected_size, sizeof(expected) - expected_size,
+                     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash, hash_size);
+    expected_size += hash_size;
+    libspdm_copy_mem(expected + expected_size, sizeof(expected) - expected_size,
+                     encap_digests, sizeof(encap_digests));
+    expected_size += sizeof(encap_digests);
+    assert_true(libspdm_hash_all(m_libspdm_use_hash_algo, local_cert_chain,
+                                 sizeof(local_cert_chain), expected + expected_size));
+    expected_size += hash_size;
+    libspdm_copy_mem(expected + expected_size, sizeof(expected) - expected_size,
+                     message, sizeof(message));
+    expected_size += sizeof(message);
+    libspdm_test_assert_digest(m_libspdm_use_hash_algo,
+                               session_info->session_transcript.digest_context_th,
+                               expected, expected_size);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 67: A Requester adds KEY_EXCHANGE to the transcript of a session that uses the Responder's
+ * public key (slot 0xFF), but no public key has been provisioned for the Responder.
+ * Expected Behavior: libspdm_append_message_k returns LIBSPDM_STATUS_INVALID_STATE_PEER. Skipped
+ * if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript then does not contain
+ * the public key.
+ **/
+static void libspdm_test_append_message_k_no_peer_public_key_case67(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_KEY_EXCHANGE, 0, 0 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x43;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->peer_used_cert_chain_slot_id = 0xFF;
+
+    assert_int_equal(libspdm_append_message_k(spdm_context, session_info, true, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_INVALID_STATE_PEER);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 68: A Responder adds KEY_EXCHANGE to the transcript of a session that uses its public key
+ * (slot 0xFF), but no public key has been provisioned for the Responder.
+ * Expected Behavior: libspdm_append_message_k returns LIBSPDM_STATUS_INVALID_STATE_LOCAL. Skipped
+ * if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript then does not contain
+ * the public key.
+ **/
+static void libspdm_test_append_message_k_no_local_public_key_case68(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_KEY_EXCHANGE, 0, 0 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x44;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->local_used_cert_chain_slot_id = 0xFF;
+
+    assert_int_equal(libspdm_append_message_k(spdm_context, session_info, false, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_INVALID_STATE_LOCAL);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 69: A Requester adds FINISH to a session transcript that has no KEY_EXCHANGE yet, in a
+ * session that uses the Responder's public key (slot 0xFF), but no public key has been
+ * provisioned for the Responder.
+ * Expected Behavior: libspdm_append_message_f returns the LIBSPDM_STATUS_INVALID_STATE_PEER of the
+ * KEY_EXCHANGE part of the transcript. Skipped if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is
+ * enabled, as the transcript then does not contain the public key.
+ **/
+static void libspdm_test_append_message_f_no_peer_public_key_case69(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_FINISH, 0, 0 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x45;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->peer_used_cert_chain_slot_id = 0xFF;
+
+    assert_int_equal(libspdm_append_message_f(spdm_context, session_info, true, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_INVALID_STATE_PEER);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 70: A Requester adds FINISH to the transcript of a session with mutual authentication that
+ * uses the Requester's public key (slot 0xFF), but no public key has been provisioned for the
+ * Requester.
+ * Expected Behavior: libspdm_append_message_f returns LIBSPDM_STATUS_INVALID_STATE_LOCAL. Skipped
+ * if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript then does not contain
+ * the public key.
+ **/
+static void libspdm_test_append_message_f_no_local_public_key_case70(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_FINISH, 0, 0 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x46;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
+        libspdm_get_hash_size(m_libspdm_use_hash_algo);
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->peer_used_cert_chain_slot_id = 0;
+    session_info->local_used_cert_chain_slot_id = 0xFF;
+    session_info->mut_auth_requested = SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED;
+
+    assert_int_equal(libspdm_append_message_f(spdm_context, session_info, true, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_INVALID_STATE_LOCAL);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 71: A Responder adds FINISH to the transcript of a session with mutual authentication that
+ * uses the Requester's public key (slot 0xFF), but no public key has been provisioned for the
+ * Requester.
+ * Expected Behavior: libspdm_append_message_f returns LIBSPDM_STATUS_INVALID_STATE_PEER. Skipped
+ * if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT is enabled, as the transcript then does not contain
+ * the public key.
+ **/
+static void libspdm_test_append_message_f_mut_auth_no_peer_public_key_case71(void **state)
+{
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t local_public_key[] = { 0x60, 0x61, 0x62, 0x63 };
+    uint8_t message[] = { SPDM_MESSAGE_VERSION_12, SPDM_FINISH, 0, 0 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x47;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->local_context.local_public_key_provision = local_public_key;
+    spdm_context->local_context.local_public_key_provision_size = sizeof(local_public_key);
+    session_info = libspdm_test_start_session(spdm_context, false);
+    session_info->local_used_cert_chain_slot_id = 0xFF;
+    session_info->peer_used_cert_chain_slot_id = 0xFF;
+    session_info->mut_auth_requested = SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED;
+
+    assert_int_equal(libspdm_append_message_f(spdm_context, session_info, false, message,
+                                              sizeof(message)),
+                     LIBSPDM_STATUS_INVALID_STATE_PEER);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 72: Two encapsulated DIGESTS responses are added to a session transcript.
+ * Expected Behavior: only the first DIGESTS is part of the transcript, so the second call succeeds
+ * without adding to it.
+ **/
+static void libspdm_test_append_message_encap_d_second_case72(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t first_digests[] = { 0x70, 0x71 };
+    uint8_t second_digests[] = { 0x72, 0x73, 0x74 };
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x48;
+
+    session_info = libspdm_test_start_session(spdm_context, false);
+    assert_int_equal(libspdm_append_message_encap_d(session_info, first_digests,
+                                                    sizeof(first_digests)),
+                     LIBSPDM_STATUS_SUCCESS);
+
+    assert_int_equal(libspdm_append_message_encap_d(session_info, second_digests,
+                                                    sizeof(second_digests)),
+                     LIBSPDM_STATUS_SUCCESS);
+
+    assert_int_equal(libspdm_get_managed_buffer_size(
+                         &session_info->session_transcript.message_encap_d),
+                     sizeof(first_digests));
+    assert_memory_equal(libspdm_get_managed_buffer(
+                            &session_info->session_transcript.message_encap_d),
+                        first_digests, sizeof(first_digests));
+}
+
+/**
+ * Test 73: libspdm_negotiate_connection_version is given a version list that is longer than
+ * LIBSPDM_MAX_VERSION_COUNT, or an empty version list.
+ * Expected Behavior: no common version is negotiated and it returns false.
+ **/
+static void libspdm_test_negotiate_connection_version_invalid_case73(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    spdm_version_number_t common_version;
+    spdm_version_number_t req_versions[LIBSPDM_MAX_VERSION_COUNT + 1];
+    spdm_version_number_t rsp_versions[1];
+    size_t index;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x49;
+
+    for (index = 0; index < LIBSPDM_ARRAY_SIZE(req_versions); index++) {
+        req_versions[index] = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    }
+    rsp_versions[0] = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+
+    assert_false(libspdm_negotiate_connection_version(&common_version, req_versions,
+                                                      LIBSPDM_ARRAY_SIZE(req_versions),
+                                                      rsp_versions,
+                                                      LIBSPDM_ARRAY_SIZE(rsp_versions)));
+    assert_false(libspdm_negotiate_connection_version(&common_version, req_versions, 1,
+                                                      NULL, 0));
+}
+
+/* The largest OpaqueData that a 16-bit OpaqueDataLength allows with 4-byte alignment. */
+#define LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE 0xFFFC
+
+/* Returns the size, with padding, of an opaque element with no vendor ID. */
+static size_t libspdm_test_opaque_element_size(size_t data_len)
+{
+    return (sizeof(opaque_element_table_header_t) + sizeof(uint16_t) + data_len + 3) & ~3;
+}
+
+/* Writes an opaque element with no vendor ID and returns its size with padding. If data is NULL,
+ * the element data is filled with 0xA5. */
+static size_t libspdm_test_write_opaque_element(uint8_t *ptr, uint8_t id, uint16_t data_len,
+                                                const void *data)
+{
+    opaque_element_table_header_t *element_header;
+    size_t element_size;
+
+    element_size = libspdm_test_opaque_element_size(data_len);
+    libspdm_zero_mem(ptr, element_size);
+
+    element_header = (void *)ptr;
+    element_header->id = id;
+    element_header->vendor_len = 0;
+    ptr += sizeof(opaque_element_table_header_t);
+    libspdm_write_uint16(ptr, data_len);
+    ptr += sizeof(uint16_t);
+    if (data == NULL) {
+        libspdm_set_mem(ptr, data_len, 0xA5);
+    } else {
+        libspdm_copy_mem(ptr, data_len, data, data_len);
+    }
+
+    return element_size;
+}
+
+/* Allocates a general opaque data table of LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE bytes. A PCI-SIG
+ * element fills the first part of the table, so that the secured message elements start beyond
+ * SPDM_MAX_OPAQUE_DATA_SIZE. */
+static uint8_t *libspdm_test_build_large_opaque_data(
+    const void *sm_data1, uint16_t sm_data1_len, const void *sm_data2, uint16_t sm_data2_len)
+{
+    spdm_general_opaque_data_table_header_t *table_header;
+    uint8_t *opaque_data;
+    uint8_t *ptr;
+    size_t filler_data_len;
+
+    opaque_data = malloc(LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE);
+    assert_non_null(opaque_data);
+
+    table_header = (void *)opaque_data;
+    table_header->total_elements = (sm_data2 == NULL) ? 2 : 3;
+    libspdm_zero_mem(table_header->reserved, sizeof(table_header->reserved));
+    ptr = (uint8_t *)(table_header + 1);
+
+    filler_data_len = LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE - sizeof(*table_header) -
+                      libspdm_test_opaque_element_size(sm_data1_len) -
+                      sizeof(opaque_element_table_header_t) - sizeof(uint16_t);
+    if (sm_data2 != NULL) {
+        filler_data_len -= libspdm_test_opaque_element_size(sm_data2_len);
+    }
+    assert_true((filler_data_len % 4) == 0);
+
+    ptr += libspdm_test_write_opaque_element(ptr, SPDM_REGISTRY_ID_PCISIG,
+                                             (uint16_t)filler_data_len, NULL);
+    ptr += libspdm_test_write_opaque_element(ptr, SPDM_REGISTRY_ID_DMTF, sm_data1_len, sm_data1);
+    if (sm_data2 != NULL) {
+        ptr += libspdm_test_write_opaque_element(ptr, SPDM_REGISTRY_ID_DMTF, sm_data2_len,
+                                                 sm_data2);
+    }
+    assert_int_equal((size_t)(ptr - opaque_data), LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE);
+
+    return opaque_data;
+}
+
+static void libspdm_test_set_large_opaque_data_state(libspdm_context_t *spdm_context)
+{
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_12 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.algorithm.other_params_support =
+        SPDM_ALGORITHMS_OPAQUE_DATA_FORMAT_1;
+
+    spdm_context->local_context.secured_message_version.secured_message_version_count = 3;
+    spdm_context->local_context.secured_message_version.secured_message_version[0] =
+        SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->local_context.secured_message_version.secured_message_version[1] =
+        SECURED_SPDM_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->local_context.secured_message_version.secured_message_version[2] =
+        SECURED_SPDM_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+}
+
+/**
+ * Test 74: In SPDM 1.2 with OpaqueDataFmt1, the Responder's OpaqueData is a general opaque data
+ *          table of 0xFFFC bytes, the largest that a 16-bit OpaqueDataLength allows with 4-byte
+ *          alignment. A PCI-SIG element fills most of it, and the version selection and AEAD limit
+ *          elements follow beyond SPDM_MAX_OPAQUE_DATA_SIZE.
+ * Expected Behavior: the general opaque data check accepts the table, and the Requester's version
+ *                    selection and AEAD limit parsers find their elements.
+ **/
+static void libspdm_test_process_large_opaque_data_selection_case74(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    secured_message_opaque_element_version_selection_t version_selection;
+    secured_message_opaque_element_aead_limit_t aead_limit;
+    spdm_version_number_t secured_message_version;
+    uint8_t aead_limit_exponent;
+    uint8_t *opaque_data;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x4A;
+
+    libspdm_test_set_large_opaque_data_state(spdm_context);
+
+    version_selection.sm_data_version = SECURED_MESSAGE_OPAQUE_ELEMENT_SMDATA_DATA_VERSION;
+    version_selection.sm_data_id = SECURED_MESSAGE_OPAQUE_ELEMENT_SMDATA_ID_VERSION_SELECTION;
+    version_selection.selected_version = SECURED_SPDM_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    aead_limit.sm_data_version = SECURED_MESSAGE_OPAQUE_ELEMENT_SMDATA_DATA_VERSION;
+    aead_limit.sm_data_id = SECURED_MESSAGE_OPAQUE_ELEMENT_SMDATA_ID_AEAD_LIMIT;
+    aead_limit.aead_limit_exponent = 32;
+
+    opaque_data = libspdm_test_build_large_opaque_data(
+        &version_selection, sizeof(version_selection), &aead_limit, sizeof(aead_limit));
+
+    assert_true(libspdm_process_general_opaque_data_check(
+                    spdm_context, LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE, opaque_data));
+
+    secured_message_version = 0;
+    status = libspdm_process_opaque_data_version_selection_data(
+        spdm_context, LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE, opaque_data, &secured_message_version);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(secured_message_version,
+                     SECURED_SPDM_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT);
+
+    aead_limit_exponent = 0;
+    status = libspdm_process_opaque_data_aead_limit(
+        spdm_context, SECURED_SPDM_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT,
+            LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE, opaque_data, &aead_limit_exponent);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(aead_limit_exponent, 32);
+
+    free(opaque_data);
+}
+
+/**
+ * Test 75: In SPDM 1.2 with OpaqueDataFmt1, the Requester's OpaqueData is a general opaque data
+ *          table of 0xFFFC bytes. A PCI-SIG element fills most of it, and the supported version
+ *          element follows beyond SPDM_MAX_OPAQUE_DATA_SIZE.
+ * Expected Behavior: the general opaque data check accepts the table, and the Responder's supported
+ *                    version parser selects the highest common version, 1.3.
+ **/
+static void libspdm_test_process_large_opaque_data_supported_version_case75(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    secured_message_opaque_element_supported_version_t *supported_version;
+    uint8_t *versions_list;
+    uint8_t sm_data[sizeof(secured_message_opaque_element_supported_version_t) +
+                    2 * sizeof(spdm_version_number_t)];
+    spdm_version_number_t secured_message_version;
+    uint8_t *opaque_data;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x4B;
+
+    libspdm_test_set_large_opaque_data_state(spdm_context);
+
+    supported_version = (void *)sm_data;
+    supported_version->sm_data_version = SECURED_MESSAGE_OPAQUE_ELEMENT_SMDATA_DATA_VERSION;
+    supported_version->sm_data_id = SECURED_MESSAGE_OPAQUE_ELEMENT_SMDATA_ID_SUPPORTED_VERSION;
+    supported_version->version_count = 2;
+    versions_list = (uint8_t *)(supported_version + 1);
+    libspdm_write_uint16(versions_list, SECURED_SPDM_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT);
+    libspdm_write_uint16(versions_list + sizeof(spdm_version_number_t),
+                         SECURED_SPDM_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT);
+
+    opaque_data = libspdm_test_build_large_opaque_data(sm_data, sizeof(sm_data), NULL, 0);
+
+    assert_true(libspdm_process_general_opaque_data_check(
+                    spdm_context, LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE, opaque_data));
+
+    secured_message_version = 0;
+    status = libspdm_process_opaque_data_supported_version_data(
+        spdm_context, LIBSPDM_TEST_LARGE_OPAQUE_DATA_SIZE, opaque_data, &secured_message_version);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(secured_message_version,
+                     SECURED_SPDM_VERSION_13 << SPDM_VERSION_NUMBER_SHIFT_BIT);
+
+    free(opaque_data);
+}
+
+#if LIBSPDM_CHECK_SPDM_CONTEXT
+/**
+ * Test 76: A Responder sets PUB_KEY_ID_CAP, but SPDM 1.0, which it supports by default, has no
+ * provisioned public keys.
+ * Expected Behavior: libspdm_check_context fails until SPDM 1.0 is removed from the Responder's
+ * versions. The same capabilities and versions are valid for a Requester, since SPDM 1.0 has no
+ * mutual authentication.
+ **/
+static void libspdm_test_check_context_pub_key_id_case76(void **state)
+{
+    void *context;
+    libspdm_return_t status;
+    bool result;
+    libspdm_data_parameter_t parameter;
+    uint32_t capability_flags;
+    bool is_requester;
+    spdm_version_number_t spdm_version[2];
+
+    context = (void *)malloc(libspdm_get_context_size());
+    libspdm_init_context(context);
+    libspdm_register_transport_layer_func(context,
+                                          LIBSPDM_MAX_SPDM_MSG_SIZE,
+                                          LIBSPDM_TEST_TRANSPORT_HEADER_SIZE,
+                                          LIBSPDM_TEST_TRANSPORT_TAIL_SIZE,
+                                          libspdm_transport_test_encode_message,
+                                          libspdm_transport_test_decode_message);
+    libspdm_register_device_buffer_func(context,
+                                        LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE,
+                                        LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE,
+                                        spdm_device_acquire_sender_buffer,
+                                        spdm_device_release_sender_buffer,
+                                        spdm_device_acquire_receiver_buffer,
+                                        spdm_device_release_receiver_buffer);
+
+    libspdm_zero_mem(&parameter, sizeof(parameter));
+    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
+    capability_flags = SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PUB_KEY_ID_CAP;
+    status = libspdm_set_data(context, LIBSPDM_DATA_CAPABILITY_FLAGS, &parameter,
+                              &capability_flags, sizeof(capability_flags));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    /* {ERROR} The default versions include SPDM 1.0. */
+    result = libspdm_check_context(context);
+    assert_false(result);
+
+    is_requester = true;
+    status = libspdm_set_data(context, LIBSPDM_DATA_IS_REQUESTER, &parameter,
+                              &is_requester, sizeof(is_requester));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    result = libspdm_check_context(context);
+    assert_true(result);
+
+    is_requester = false;
+    status = libspdm_set_data(context, LIBSPDM_DATA_IS_REQUESTER, &parameter,
+                              &is_requester, sizeof(is_requester));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    spdm_version[0] = SPDM_MESSAGE_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_version[1] = SPDM_MESSAGE_VERSION_12 << SPDM_VERSION_NUMBER_SHIFT_BIT;
+    status = libspdm_set_data(context, LIBSPDM_DATA_SPDM_VERSION, &parameter,
+                              spdm_version, sizeof(spdm_version));
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    result = libspdm_check_context(context);
+    assert_true(result);
+
+    free(context);
+}
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
+
+/**
+ * Test 77: The scratch buffer is larger than libspdm_get_sizeof_required_scratch_buffer returns.
+ * Expected Behavior: libspdm_get_scratch_buffer returns the same space as for a buffer of the
+ * required size, which ends where libspdm's copy of the last request starts.
+ **/
+static void libspdm_test_get_scratch_buffer_oversized_case77(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t buffer_size;
+    uint8_t *buffer;
+    void *scratch_buffer;
+    size_t scratch_buffer_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x4D;
+
+    buffer_size = libspdm_get_sizeof_required_scratch_buffer(spdm_context) + 64;
+    buffer = malloc(buffer_size);
+    assert_non_null(buffer);
+    libspdm_set_scratch_buffer(spdm_context, buffer, buffer_size);
+
+    libspdm_get_scratch_buffer(spdm_context, &scratch_buffer, &scratch_buffer_size);
+
+    assert_ptr_equal(scratch_buffer, buffer);
+    assert_ptr_equal((uint8_t *)scratch_buffer + scratch_buffer_size,
+                     spdm_context->last_spdm_request);
+
+    /* Give the SPDM context back the scratch buffer that the test context owns. */
+    libspdm_set_scratch_buffer(spdm_context, spdm_test_context->scratch_buffer,
+                               spdm_test_context->scratch_buffer_size);
+    free(buffer);
+}
+
+/**
+ * Test 78: Get the secured message context of a session through its session info.
+ * Expected Behavior: libspdm_get_secured_message_context_via_session_info returns the secured
+ * message context of the session.
+ **/
+static void libspdm_test_get_secured_message_context_via_session_info_case78(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x4E;
+
+    session_info = &spdm_context->session_info[0];
+
+    assert_non_null(session_info->secured_message_context);
+    assert_ptr_equal(libspdm_get_secured_message_context_via_session_info(session_info),
+                     session_info->secured_message_context);
+}
+
+/**
+ * Test 79: Get the secured message context through a NULL session info.
+ * Expected Behavior: libspdm_get_secured_message_context_via_session_info returns NULL.
+ **/
+static void libspdm_test_get_secured_message_context_via_null_session_info_case79(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+
+    spdm_test_context = *state;
+    spdm_test_context->case_id = 0x4F;
+
+    assert_null(libspdm_get_secured_message_context_via_session_info(NULL));
+}
+
+/**
+ * Test 80: Get the certificate chain data of a provisioned local slot.
+ * Expected Behavior: libspdm_get_local_cert_chain_data returns the certificate chain that follows
+ * the spdm_cert_chain_t header and the root hash.
+ **/
+static void libspdm_test_get_local_cert_chain_data_case80(void **state)
+{
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    uint8_t cert_chain[0x100];
+    const void *cert_chain_data;
+    size_t cert_chain_data_size;
+    size_t hash_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x50;
+
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    hash_size = libspdm_get_hash_size(m_libspdm_use_hash_algo);
+    spdm_context->local_context.local_cert_chain_provision[0] = cert_chain;
+    spdm_context->local_context.local_cert_chain_provision_size[0] = sizeof(cert_chain);
+
+    assert_true(libspdm_get_local_cert_chain_data(spdm_context, 0, &cert_chain_data,
+                                                  &cert_chain_data_size));
+    assert_ptr_equal(cert_chain_data, cert_chain + sizeof(spdm_cert_chain_t) + hash_size);
+    assert_int_equal(cert_chain_data_size,
+                     sizeof(cert_chain) - sizeof(spdm_cert_chain_t) - hash_size);
+
+    /* The SPDM context must not keep a pointer to the stack. */
+    spdm_context->local_context.local_cert_chain_provision[0] = NULL;
+    spdm_context->local_context.local_cert_chain_provision_size[0] = 0;
+}
+
 static libspdm_test_context_t m_libspdm_common_context_data_test_context = {
     LIBSPDM_TEST_CONTEXT_VERSION,
     true,
@@ -2426,7 +4916,9 @@ int libspdm_common_context_data_test_main(void)
 
         /* Test that the Export Master Secret can be exported and cleared. */
         cmocka_unit_test(libspdm_test_export_master_secret_case19),
+#if LIBSPDM_CHECK_SPDM_CONTEXT
         cmocka_unit_test(libspdm_test_check_context_case20),
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
 
         /* Test the max DHE/PSK session count */
         cmocka_unit_test(libspdm_test_max_session_count_case21),
@@ -2435,7 +4927,7 @@ int libspdm_common_context_data_test_main(void)
         cmocka_unit_test(libspdm_test_process_opaque_data_case22),
 
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
-        /* reset_context frees the stored peer leaf certificate public key */
+        /* reset_context empties the peer certificate chain slots */
         cmocka_unit_test(libspdm_test_reset_context_leaf_key_case23),
 #endif
 
@@ -2453,6 +4945,155 @@ int libspdm_common_context_data_test_main(void)
         cmocka_unit_test(libspdm_test_aead_limit_peer_support_case29),
         /* DSP0277 1.3 AEAD limit: exponent boundary semantics (exp 0, 1, 63, 64). */
         cmocka_unit_test(libspdm_test_aead_limit_small_exponent_case30),
+
+        /* reset_context restores the SPDM 1.0 and 1.1 signature endianness setting */
+        cmocka_unit_test(libspdm_test_reset_context_verify_signature_endian_case31),
+
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+        /* reset_context ends a chunk transfer in either direction */
+        cmocka_unit_test(libspdm_test_reset_context_chunk_case32),
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT
+        /* The peer leaf key is parsed with the peer's asymmetric algorithm. */
+        cmocka_unit_test(libspdm_test_set_data_peer_cert_chain_responder_case33),
+        cmocka_unit_test(libspdm_test_set_data_peer_cert_chain_requester_case34),
+#endif
+        /* set_data and get_data agree on every item that supports both */
+        cmocka_unit_test_setup(libspdm_test_set_get_data_round_trip_case35,
+                               libspdm_unit_test_reset_context),
+        /* set_data stores each local item that get_data does not return */
+        cmocka_unit_test_setup(libspdm_test_set_data_local_items_case36,
+                               libspdm_unit_test_reset_context),
+        /* a maximum sequence number of 0 selects the default */
+        cmocka_unit_test_setup(libspdm_test_set_data_default_max_sequence_number_case37,
+                               libspdm_unit_test_reset_context),
+        /* set_data rejects a wrong data_size */
+        cmocka_unit_test_setup(libspdm_test_set_data_wrong_size_case38,
+                               libspdm_unit_test_reset_context),
+        /* set_data rejects an unsupported location */
+        cmocka_unit_test_setup(libspdm_test_set_data_wrong_location_case39,
+                               libspdm_unit_test_reset_context),
+        /* set_data rejects an out-of-range slot ID */
+        cmocka_unit_test_setup(libspdm_test_set_data_invalid_slot_case40,
+                               libspdm_unit_test_reset_context),
+        /* set_data rejects invalid arguments and values */
+        cmocka_unit_test_setup(libspdm_test_set_data_invalid_value_case41,
+                               libspdm_unit_test_reset_context),
+        /* set_data does not set read-only items */
+        cmocka_unit_test_setup(libspdm_test_set_data_read_only_case42,
+                               libspdm_unit_test_reset_context),
+        /* get_data rejects an unsupported location */
+        cmocka_unit_test_setup(libspdm_test_get_data_wrong_location_case43,
+                               libspdm_unit_test_reset_context),
+        /* get_data rejects invalid arguments, slot IDs and sessions */
+        cmocka_unit_test_setup(libspdm_test_get_data_invalid_parameter_case44,
+                               libspdm_unit_test_reset_context),
+        /* get_data does not get write-only items */
+        cmocka_unit_test_setup(libspdm_test_get_data_write_only_case45,
+                               libspdm_unit_test_reset_context),
+        /* get_data returns the read-only items outside of a session */
+        cmocka_unit_test_setup(libspdm_test_get_data_read_only_case46,
+                               libspdm_unit_test_reset_context),
+        /* get_data returns the session items */
+        cmocka_unit_test_setup(libspdm_test_get_data_session_items_case47,
+                               libspdm_unit_test_reset_context),
+        /* set_data rejects a peer certificate chain that cannot be parsed */
+        cmocka_unit_test_setup(libspdm_test_set_data_peer_cert_chain_invalid_case48,
+                               libspdm_unit_test_reset_context),
+        /* only the connection version is supported */
+        cmocka_unit_test_setup(libspdm_test_is_version_supported_case49,
+                               libspdm_unit_test_reset_context),
+        /* extended capability flags from either endpoint's point of view */
+        cmocka_unit_test_setup(libspdm_test_is_capabilities_ext_flag_supported_case50,
+                               libspdm_unit_test_reset_context),
+        /* SPDM 1.0 has no encapsulated requests */
+        cmocka_unit_test_setup(libspdm_test_is_encap_supported_10_case51,
+                               libspdm_unit_test_reset_context),
+        /* SPDM 1.2 accepts MUT_AUTH_CAP in place of ENCAP_CAP */
+        cmocka_unit_test_setup(libspdm_test_is_encap_supported_12_case52,
+                               libspdm_unit_test_reset_context),
+        /* registering the transport layer after the buffers adjusts the transfer sizes */
+        cmocka_unit_test_setup(libspdm_test_register_transport_after_buffer_case53,
+                               libspdm_unit_test_reset_context),
+        /* the certificate chain verification function is registered */
+        cmocka_unit_test_setup(libspdm_test_register_verify_spdm_cert_chain_func_case54,
+                               libspdm_unit_test_reset_context),
+        /* the receiver buffer is the Integrator's */
+        cmocka_unit_test_setup(libspdm_test_get_receiver_buffer_case55,
+                               libspdm_unit_test_reset_context),
+        /* the last SPDM error is returned as set */
+        cmocka_unit_test_setup(libspdm_test_last_spdm_error_struct_case56,
+                               libspdm_unit_test_reset_context),
+        /* a FIPS self-test context is imported and exported */
+        cmocka_unit_test_setup(libspdm_test_fips_selftest_context_case57,
+                               libspdm_unit_test_reset_context),
+        /* a FIPS self-test context with a NULL pointer or wrong size is rejected */
+        cmocka_unit_test_setup(libspdm_test_fips_selftest_context_invalid_case58,
+                               libspdm_unit_test_reset_context),
+        /* check_context rejects a small sender data transfer size */
+        cmocka_unit_test_setup(libspdm_test_check_context_sender_size_case59,
+                               libspdm_unit_test_reset_context),
+        /* check_context rejects a max message size below the sender data transfer size */
+        cmocka_unit_test_setup(libspdm_test_check_context_sender_max_msg_size_case60,
+                               libspdm_unit_test_reset_context),
+        /* check_context rejects a certificate chain that exceeds the max message size */
+        cmocka_unit_test_setup(libspdm_test_check_context_cert_chain_size_case61,
+                               libspdm_unit_test_reset_context),
+        /* init_context_with_secured_context rejects a NULL secured context */
+        cmocka_unit_test_setup(libspdm_test_init_context_null_secured_context_case62,
+                               libspdm_unit_test_reset_context),
+        /* reset_message_c frees the M1/M2 hash */
+        cmocka_unit_test_setup(libspdm_test_reset_message_c_case63,
+                               libspdm_unit_test_reset_context),
+        /* a session's L1/L2 includes the VCA as of SPDM 1.2 */
+        cmocka_unit_test_setup(libspdm_test_append_message_m_session_case64,
+                               libspdm_unit_test_reset_context),
+        /* TH includes the DIGESTS when the Responder negotiated multiple keys */
+        cmocka_unit_test_setup(libspdm_test_append_message_k_multi_key_case65,
+                               libspdm_unit_test_reset_context),
+        /* TH includes the encapsulated DIGESTS when the Requester negotiated multiple keys */
+        cmocka_unit_test_setup(libspdm_test_append_message_f_multi_key_case66,
+                               libspdm_unit_test_reset_context),
+        /* message K needs the Responder's public key for slot 0xFF */
+        cmocka_unit_test_setup(libspdm_test_append_message_k_no_peer_public_key_case67,
+                               libspdm_unit_test_reset_context),
+        /* message K needs the local public key for slot 0xFF */
+        cmocka_unit_test_setup(libspdm_test_append_message_k_no_local_public_key_case68,
+                               libspdm_unit_test_reset_context),
+        /* message F returns the error of message K */
+        cmocka_unit_test_setup(libspdm_test_append_message_f_no_peer_public_key_case69,
+                               libspdm_unit_test_reset_context),
+        /* message F needs the Requester's own public key for slot 0xFF */
+        cmocka_unit_test_setup(libspdm_test_append_message_f_no_local_public_key_case70,
+                               libspdm_unit_test_reset_context),
+        /* message F needs the Requester's public key for slot 0xFF on the Responder */
+        cmocka_unit_test_setup(libspdm_test_append_message_f_mut_auth_no_peer_public_key_case71,
+                               libspdm_unit_test_reset_context),
+        /* only the first encapsulated DIGESTS is in the transcript */
+        cmocka_unit_test_setup(libspdm_test_append_message_encap_d_second_case72,
+                               libspdm_unit_test_reset_context),
+        /* version negotiation rejects invalid version lists */
+        cmocka_unit_test_setup(libspdm_test_negotiate_connection_version_invalid_case73,
+                               libspdm_unit_test_reset_context),
+        /* OpaqueData larger than SPDM_MAX_OPAQUE_DATA_SIZE */
+        cmocka_unit_test_setup(libspdm_test_process_large_opaque_data_selection_case74,
+                               libspdm_unit_test_reset_context),
+        cmocka_unit_test_setup(libspdm_test_process_large_opaque_data_supported_version_case75,
+                               libspdm_unit_test_reset_context),
+#if LIBSPDM_CHECK_SPDM_CONTEXT
+        /* A Responder with PUB_KEY_ID_CAP cannot support SPDM 1.0. */
+        cmocka_unit_test(libspdm_test_check_context_pub_key_id_case76),
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
+        /* an oversized scratch buffer does not overlap the copy of the last request */
+        cmocka_unit_test_setup(libspdm_test_get_scratch_buffer_oversized_case77,
+                               libspdm_unit_test_reset_context),
+        cmocka_unit_test_setup(libspdm_test_get_secured_message_context_via_session_info_case78,
+                               libspdm_unit_test_reset_context),
+        cmocka_unit_test_setup(
+            libspdm_test_get_secured_message_context_via_null_session_info_case79,
+            libspdm_unit_test_reset_context),
+        cmocka_unit_test_setup(libspdm_test_get_local_cert_chain_data_case80,
+                               libspdm_unit_test_reset_context),
     };
 
     libspdm_setup_test_context(&m_libspdm_common_context_data_test_context);

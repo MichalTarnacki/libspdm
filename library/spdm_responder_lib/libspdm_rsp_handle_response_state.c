@@ -17,7 +17,7 @@ libspdm_return_t libspdm_responder_handle_response_state(libspdm_context_t *spdm
     case LIBSPDM_RESPONSE_STATE_BUSY:
         return libspdm_generate_error_response(spdm_context, SPDM_ERROR_CODE_BUSY,
                                                0, response_size, response);
-    /* NOTE: Need to reset status to Normal in up level*/
+    /* NOTE: Need to reset status to Normal in the upper layer*/
     case LIBSPDM_RESPONSE_STATE_NEED_RESYNC:
         status = libspdm_generate_error_response(spdm_context,
                                                  SPDM_ERROR_CODE_REQUEST_RESYNCH, 0,
@@ -25,7 +25,7 @@ libspdm_return_t libspdm_responder_handle_response_state(libspdm_context_t *spdm
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             return status;
         }
-        /* NOTE: Need to let SPDM_VERSION reset the State*/
+        /* NOTE: Need to let GET_VERSION reset the State*/
         libspdm_set_connection_state(spdm_context,
                                      LIBSPDM_CONNECTION_STATE_NOT_STARTED);
         return LIBSPDM_STATUS_SUCCESS;

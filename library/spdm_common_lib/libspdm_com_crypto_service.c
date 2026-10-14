@@ -130,6 +130,36 @@ bool libspdm_get_local_public_key_buffer(void *spdm_context,
     return false;
 }
 
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+void libspdm_free_peer_leaf_cert_public_key(libspdm_context_t *context, uint8_t slot_id)
+{
+    void *pubkey_context;
+
+    pubkey_context = context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key;
+    if (pubkey_context == NULL) {
+        return;
+    }
+
+    if (context->local_context.is_requester) {
+        if (context->connection_info.algorithm.pqc_asym_algo != 0) {
+            libspdm_pqc_asym_free(context->connection_info.algorithm.pqc_asym_algo,
+                                  pubkey_context);
+        } else {
+            libspdm_asym_free(context->connection_info.algorithm.base_asym_algo, pubkey_context);
+        }
+    } else {
+        if (context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+            libspdm_req_pqc_asym_free(context->connection_info.algorithm.req_pqc_asym_alg,
+                                      pubkey_context);
+        } else {
+            libspdm_req_asym_free(context->connection_info.algorithm.req_base_asym_alg,
+                                  pubkey_context);
+        }
+    }
+    context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key = NULL;
+}
+#endif /* !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) */
+
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
 bool libspdm_calculate_l1l2(libspdm_context_t *spdm_context,
                             void *session_info,
@@ -241,7 +271,7 @@ bool libspdm_calculate_l1l2_hash(libspdm_context_t *spdm_context,
 /*
  * This function calculates m1m2.
  *
- * @param  spdm_context                  A pointer to the SPDM context.
+ * @param  context                       A pointer to the SPDM context.
  * @param  is_mut                        Indicate if this is from mutual authentication.
  * @param  m1m2                          The buffer to store the m1m2
  */
@@ -371,7 +401,7 @@ static bool libspdm_calculate_m1m2(void *context, bool is_mut,
 /*
  * This function calculates m1m2 hash.
  *
- * @param  spdm_context                  A pointer to the SPDM context.
+ * @param  context                       A pointer to the SPDM context.
  * @param  is_mut                        Indicate if this is from mutual authentication.
  * @param  m1m2_hash_size               size in bytes of the m1m2 hash
  * @param  m1m2_hash                   The buffer to store the m1m2 hash
@@ -683,7 +713,7 @@ bool libspdm_verify_peer_cert_chain_buffer_authority(libspdm_context_t *spdm_con
 {
     const uint8_t *root_cert;
     size_t root_cert_size;
-    uint8_t root_cert_index;
+    size_t root_cert_index;
     size_t root_cert_hash_size;
     uint8_t root_cert_hash[LIBSPDM_MAX_HASH_SIZE];
     const uint8_t *received_root_cert;
@@ -983,10 +1013,12 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
     libspdm_m1m2_managed_buffer_t m1m2;
     uint8_t *m1m2_buffer;
     size_t m1m2_buffer_size;
+#if LIBSPDM_CERT_PARSE_SUPPORT
     const uint8_t *cert_buffer;
     size_t cert_buffer_size;
     const uint8_t *cert_chain_data;
     size_t cert_chain_data_size;
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 #else
     uint8_t m1m2_hash[LIBSPDM_MAX_HASH_SIZE];
     size_t m1m2_hash_size;
@@ -1045,7 +1077,7 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
             return false;
         }
     } else {
-#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+#if (LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && (LIBSPDM_CERT_PARSE_SUPPORT)
         libspdm_get_peer_cert_chain_data(
             spdm_context, slot_id, (const void **)&cert_chain_data, &cert_chain_data_size);
 
@@ -1080,6 +1112,8 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
         if (!result) {
             return false;
         }
+#elif LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+        return false;
 #else
         context = spdm_context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key;
         LIBSPDM_ASSERT(context != NULL);
@@ -1327,10 +1361,12 @@ bool libspdm_verify_endpoint_info_signature(libspdm_context_t *spdm_context,
     libspdm_il1il2_managed_buffer_t il1il2;
     uint8_t *il1il2_buffer;
     size_t il1il2_buffer_size;
+#if LIBSPDM_CERT_PARSE_SUPPORT
     const uint8_t *cert_chain_data;
     size_t cert_chain_data_size;
     const uint8_t *cert_buffer;
     size_t cert_buffer_size;
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 #else
     uint8_t il1il2_hash[LIBSPDM_MAX_HASH_SIZE];
     size_t il1il2_hash_size;
@@ -1390,7 +1426,7 @@ bool libspdm_verify_endpoint_info_signature(libspdm_context_t *spdm_context,
             return false;
         }
     } else {
-#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+#if (LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && (LIBSPDM_CERT_PARSE_SUPPORT)
         libspdm_get_peer_cert_chain_data(
             spdm_context, slot_id, (const void **)&cert_chain_data, &cert_chain_data_size);
 
@@ -1414,6 +1450,8 @@ bool libspdm_verify_endpoint_info_signature(libspdm_context_t *spdm_context,
         if (!result) {
             return false;
         }
+#elif LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+        return false;
 #else
         context = spdm_context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key;
         LIBSPDM_ASSERT(context != NULL);

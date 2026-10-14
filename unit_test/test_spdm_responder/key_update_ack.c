@@ -2056,6 +2056,216 @@ static void rsp_key_update_ack_case27(void **state)
                         m_rsp_secret_buffer, secured_message_context->hash_size);
 }
 
+/* Every key update callback seen by the current test, in order. */
+typedef struct {
+    libspdm_key_update_operation_t op;
+    libspdm_key_update_action_t action;
+} rsp_key_update_ack_callback_event_t;
+
+#define RSP_KEY_UPDATE_ACK_MAX_CALLBACK_EVENTS 8
+
+static rsp_key_update_ack_callback_event_t
+    m_callback_events[RSP_KEY_UPDATE_ACK_MAX_CALLBACK_EVENTS];
+static size_t m_callback_event_count;
+
+static void rsp_key_update_ack_record_callback(void *spdm_context, uint32_t session_id,
+                                               libspdm_key_update_operation_t key_update_op,
+                                               libspdm_key_update_action_t key_update_action)
+{
+    assert_true(m_callback_event_count < RSP_KEY_UPDATE_ACK_MAX_CALLBACK_EVENTS);
+    m_callback_events[m_callback_event_count].op = key_update_op;
+    m_callback_events[m_callback_event_count].action = key_update_action;
+    m_callback_event_count++;
+}
+
+static libspdm_secured_message_context_t *m_case28_secured_message_context;
+
+/* Once the Requester direction has been updated, make the Responder direction
+ * fail. HKDF-Expand rejects an output longer than 255 * hash_size per RFC 5869
+ * Section 2.3, on the requested length alone, so the AEAD key derivation fails
+ * after the Responder data secret has already been overwritten in place. */
+static void rsp_key_update_ack_case28_callback(void *spdm_context, uint32_t session_id,
+                                               libspdm_key_update_operation_t key_update_op,
+                                               libspdm_key_update_action_t key_update_action)
+{
+    rsp_key_update_ack_record_callback(spdm_context, session_id, key_update_op,
+                                       key_update_action);
+
+    if ((key_update_action == LIBSPDM_KEY_UPDATE_ACTION_REQUESTER) &&
+        (key_update_op == LIBSPDM_KEY_UPDATE_OPERATION_CREATE_UPDATE)) {
+        m_case28_secured_message_context->aead_key_size =
+            255 * m_case28_secured_message_context->hash_size + 1;
+    }
+}
+
+/**
+ * Test 28: UPDATE_ALL_KEYS must not leave one direction updated while the other
+ * is not.
+ * Expected Behavior: when the key update cannot be completed for both
+ * directions the responder reports an error and leaves both directions on the
+ * old keys, with no backup left pending for a later commit.
+ **/
+static void rsp_key_update_ack_case28(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t            *spdm_test_context;
+    libspdm_context_t                 *spdm_context;
+    uint32_t session_id;
+    libspdm_session_info_t            *session_info;
+    libspdm_secured_message_context_t *secured_message_context;
+
+    size_t response_size;
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+
+    uint8_t m_req_secret_buffer[LIBSPDM_MAX_HASH_SIZE];
+    uint8_t m_rsp_secret_buffer[LIBSPDM_MAX_HASH_SIZE];
+    size_t original_aead_key_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x1C;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_11 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+
+    libspdm_set_standard_key_update_test_state( spdm_context, &session_id);
+
+    session_info = &spdm_context->session_info[0];
+    secured_message_context = session_info->secured_message_context;
+
+    libspdm_set_standard_key_update_test_secrets(
+        session_info->secured_message_context,
+        m_rsp_secret_buffer, (uint8_t)(0xFF),
+        m_req_secret_buffer, (uint8_t)(0xEE));
+
+    /* Let the Requester direction succeed, then fail the Responder direction. */
+    original_aead_key_size = secured_message_context->aead_key_size;
+    m_case28_secured_message_context = secured_message_context;
+    m_callback_event_count = 0;
+    libspdm_register_key_update_callback_func(spdm_context, rsp_key_update_ack_case28_callback);
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_key_update(spdm_context,
+                                             m_libspdm_key_update_request3_size,
+                                             &m_libspdm_key_update_request3,
+                                             &response_size, response);
+
+    libspdm_register_key_update_callback_func(spdm_context, NULL);
+    secured_message_context->aead_key_size = original_aead_key_size;
+
+    assert_int_equal(status, LIBSPDM_STATUS_UNSUPPORTED_CAP);
+
+    /* The Requester update was announced through the callback, so its rollback must be
+     * too. The failed Responder update was never announced, so nothing else may be. */
+    assert_int_equal(m_callback_event_count, 2);
+    assert_int_equal(m_callback_events[0].op, LIBSPDM_KEY_UPDATE_OPERATION_CREATE_UPDATE);
+    assert_int_equal(m_callback_events[0].action, LIBSPDM_KEY_UPDATE_ACTION_REQUESTER);
+    assert_int_equal(m_callback_events[1].op, LIBSPDM_KEY_UPDATE_OPERATION_DISCARD_UPDATE);
+    assert_int_equal(m_callback_events[1].action, LIBSPDM_KEY_UPDATE_ACTION_REQUESTER);
+
+    /* Both directions must still hold the pre-update secrets. */
+    assert_memory_equal(secured_message_context
+                        ->application_secret.request_data_secret,
+                        m_req_secret_buffer, secured_message_context->hash_size);
+    assert_memory_equal(secured_message_context
+                        ->application_secret.response_data_secret,
+                        m_rsp_secret_buffer, secured_message_context->hash_size);
+
+    /* No half-finished update may be left pending for a later commit. */
+    assert_false(secured_message_context->requester_backup_valid);
+    assert_false(secured_message_context->responder_backup_valid);
+}
+
+/* Make the first create of a KEY_UPDATE request fail and check that the responder
+ * reports an error and leaves both directions on the old keys, with no backup left
+ * pending for a later commit. */
+static void rsp_key_update_ack_first_create_failure(void **state, uint32_t case_id,
+                                                    const spdm_key_update_request_t *request,
+                                                    size_t request_size)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t            *spdm_test_context;
+    libspdm_context_t                 *spdm_context;
+    uint32_t session_id;
+    libspdm_session_info_t            *session_info;
+    libspdm_secured_message_context_t *secured_message_context;
+
+    size_t response_size;
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+
+    uint8_t m_req_secret_buffer[LIBSPDM_MAX_HASH_SIZE];
+    uint8_t m_rsp_secret_buffer[LIBSPDM_MAX_HASH_SIZE];
+    size_t original_aead_key_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = case_id;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_11 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+
+    libspdm_set_standard_key_update_test_state( spdm_context, &session_id);
+
+    session_info = &spdm_context->session_info[0];
+    secured_message_context = session_info->secured_message_context;
+
+    libspdm_set_standard_key_update_test_secrets(
+        session_info->secured_message_context,
+        m_rsp_secret_buffer, (uint8_t)(0xFF),
+        m_req_secret_buffer, (uint8_t)(0xEE));
+
+    /* HKDF-Expand rejects an output longer than 255 * hash_size per RFC 5869
+     * Section 2.3, so the AEAD key derivation of the first create fails after the
+     * Requester data secret has already been overwritten in place. */
+    original_aead_key_size = secured_message_context->aead_key_size;
+    secured_message_context->aead_key_size = 255 * secured_message_context->hash_size + 1;
+
+    m_callback_event_count = 0;
+    libspdm_register_key_update_callback_func(spdm_context, rsp_key_update_ack_record_callback);
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_key_update(spdm_context, request_size, request,
+                                             &response_size, response);
+
+    libspdm_register_key_update_callback_func(spdm_context, NULL);
+    secured_message_context->aead_key_size = original_aead_key_size;
+
+    assert_int_equal(status, LIBSPDM_STATUS_UNSUPPORTED_CAP);
+
+    /* No key was created, so the callback must not announce any update or rollback. */
+    assert_int_equal(m_callback_event_count, 0);
+
+    assert_memory_equal(secured_message_context
+                        ->application_secret.request_data_secret,
+                        m_req_secret_buffer, secured_message_context->hash_size);
+    assert_memory_equal(secured_message_context
+                        ->application_secret.response_data_secret,
+                        m_rsp_secret_buffer, secured_message_context->hash_size);
+
+    assert_false(secured_message_context->requester_backup_valid);
+    assert_false(secured_message_context->responder_backup_valid);
+}
+
+/**
+ * Test 29: UPDATE_KEY whose Requester key creation fails.
+ * Expected Behavior: the responder reports an error and restores the old
+ * Requester key, with no backup left pending.
+ **/
+static void rsp_key_update_ack_case29(void **state)
+{
+    rsp_key_update_ack_first_create_failure(state, 0x1D, &m_libspdm_key_update_request1,
+                                            m_libspdm_key_update_request1_size);
+}
+
+/**
+ * Test 30: UPDATE_ALL_KEYS whose first (Requester) key creation fails.
+ * Expected Behavior: the responder reports an error and restores the old
+ * Requester key, with no backup left pending.
+ **/
+static void rsp_key_update_ack_case30(void **state)
+{
+    rsp_key_update_ack_first_create_failure(state, 0x1E, &m_libspdm_key_update_request3,
+                                            m_libspdm_key_update_request3_size);
+}
+
 int libspdm_rsp_key_update_ack_test(void)
 {
     const struct CMUnitTest test_cases[] = {
@@ -2115,6 +2325,10 @@ int libspdm_rsp_key_update_ack_test(void)
         cmocka_unit_test(rsp_key_update_ack_case26),
         /* Invalid operation,other key_update operation: failed*/
         cmocka_unit_test(rsp_key_update_ack_case27),
+        /* UpdateAllKeys: a failed update leaves neither direction updated*/
+        cmocka_unit_test(rsp_key_update_ack_case28),
+        cmocka_unit_test(rsp_key_update_ack_case29),
+        cmocka_unit_test(rsp_key_update_ack_case30),
     };
 
     libspdm_test_context_t test_context = {

@@ -548,6 +548,7 @@ static void req_encap_endpoint_info_err_case9(void **state)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -566,11 +567,6 @@ static void req_encap_endpoint_info_err_case9(void **state)
             spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
             libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
-        libspdm_get_leaf_cert_public_key_from_cert_chain(
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            spdm_context->connection_info.algorithm.req_base_asym_alg,
-            data, data_size,
-            &spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
 #endif
     }
 
@@ -604,6 +600,8 @@ static void req_encap_endpoint_info_err_case9(void **state)
     /* transcript.message_encap_e size check */
     assert_int_equal(spdm_context->transcript.message_encap_e.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**

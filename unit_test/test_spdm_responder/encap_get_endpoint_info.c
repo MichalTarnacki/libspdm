@@ -52,6 +52,7 @@ static void rsp_encap_get_endpoint_info_case1(void **state)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     libspdm_reset_message_a(spdm_context);
@@ -70,6 +71,7 @@ static void rsp_encap_get_endpoint_info_case1(void **state)
             spdm_context->connection_info.peer_used_cert_chain[index].buffer_hash);
         spdm_context->connection_info.peer_used_cert_chain[index].buffer_hash_size =
             libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+        libspdm_free_peer_leaf_cert_public_key(spdm_context, (uint8_t)index);
         libspdm_get_leaf_cert_public_key_from_cert_chain(
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -188,6 +190,8 @@ static void rsp_encap_get_endpoint_info_case1(void **state)
 #else
     assert_null(spdm_context->transcript.digest_context_encap_il1il2);
 #endif
+
+    free(data);
 }
 
 /**
@@ -226,6 +230,7 @@ static void rsp_encap_get_endpoint_info_case2(void **state)
     spdm_context->encap_context.payload_buffer_size = 0;
 
     if (!libspdm_read_requester_public_key(m_libspdm_use_req_asym_algo, &data, &data_size)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.peer_public_key_provision = data;
@@ -284,6 +289,8 @@ static void rsp_encap_get_endpoint_info_case2(void **state)
 #else
     assert_null(spdm_context->transcript.digest_context_encap_il1il2);
 #endif
+
+    free(data);
 }
 
 /**
@@ -390,6 +397,7 @@ static void rsp_encap_get_endpoint_info_case4(void **state)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -429,6 +437,7 @@ static void rsp_encap_get_endpoint_info_case4(void **state)
             spdm_context->connection_info.peer_used_cert_chain[index].buffer_hash);
         spdm_context->connection_info.peer_used_cert_chain[index].buffer_hash_size =
             libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+        libspdm_free_peer_leaf_cert_public_key(spdm_context, (uint8_t)index);
         libspdm_get_leaf_cert_public_key_from_cert_chain(
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -490,6 +499,8 @@ static void rsp_encap_get_endpoint_info_case4(void **state)
 #else
     assert_null(session_info->session_transcript.digest_context_encap_il1il2);
 #endif
+
+    free(data);
 }
 
 /**

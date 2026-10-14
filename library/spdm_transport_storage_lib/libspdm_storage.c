@@ -176,7 +176,7 @@ static libspdm_return_t libspdm_storage_secured_message_decode(
  * @param  secured_message         On output, the start of an SPDM Storage secured message, pointing
  *                                 into the transport message.
  * @param  transport_message_size  Size in bytes of the transport message buffer.
- * @param  transport_message       A pointer to a source buffer to store the transport message.
+ * @param  transport_message       A pointer to a destination buffer to store the transport message.
  * @param  is_request_message      Indicates if it is a request message.
  *
  **/
@@ -280,11 +280,7 @@ libspdm_return_t libspdm_storage_decode_message(uint32_t **session_id,
         return LIBSPDM_STATUS_INVALID_MSG_FIELD;
     }
 
-#if __BYTE_ORDER__==__ORDER_BIG_ENDIAN__
-    security_protocol_specific  = libspdm_byte_swap_16(storage_header->security_protocol_specific);
-#else
     security_protocol_specific  = storage_header->security_protocol_specific;
-#endif
     spsp0 = security_protocol_specific & 0xFF;
     spsp1 = security_protocol_specific >> 8;
 
@@ -378,9 +374,9 @@ libspdm_return_t libspdm_transport_storage_decode_message(
                 LIBSPDM_STORAGE_SECURED_MESSAGE_HEADER_RESERVED_BYTES + sizeof(uint32_t)) {
                 return LIBSPDM_STATUS_INVALID_MSG_SIZE;
             }
-            **session_id =
-                *((uint32_t *)(((uint8_t *)transport_message) +
-                               LIBSPDM_STORAGE_SECURED_MESSAGE_HEADER_RESERVED_BYTES));
+            **session_id = libspdm_read_uint32(
+                (const uint8_t *)transport_message +
+                LIBSPDM_STORAGE_SECURED_MESSAGE_HEADER_RESERVED_BYTES);
 
             secured_message_context =
                 libspdm_get_secured_message_context_via_session_id(
@@ -409,7 +405,7 @@ libspdm_return_t libspdm_transport_storage_decode_message(
 
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
-                               "libspdm_decode_secured_message - %xu\n", status));
+                               "libspdm_decode_secured_message - %x\n", status));
                 libspdm_secured_message_get_last_spdm_error_struct(
                     secured_message_context, &spdm_error);
                 libspdm_set_last_spdm_error_struct(spdm_context,
@@ -421,7 +417,7 @@ libspdm_return_t libspdm_transport_storage_decode_message(
                                                             message, is_request_message);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
-                               "libspdm_storage_secured_message_decode - %xu\n", status));
+                               "libspdm_storage_secured_message_decode - %x\n", status));
                 return status;
             }
 
@@ -438,7 +434,7 @@ libspdm_return_t libspdm_transport_storage_decode_message(
             transport_message, &secured_message_size, (void **)&secured_message);
 
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
-            LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_decode_message - %xu\n", status));
+            LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_decode_message - %x\n", status));
             return status;
         }
 
@@ -464,7 +460,7 @@ libspdm_return_t libspdm_transport_storage_decode_message(
                 message_size, message, &spdm_secured_message_callbacks);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
-                               "libspdm_decode_secured_message - %xu\n", status));
+                               "libspdm_decode_secured_message - %x\n", status));
                 libspdm_secured_message_get_last_spdm_error_struct(
                     secured_message_context, &spdm_error);
                 libspdm_set_last_spdm_error_struct(spdm_context,
@@ -476,7 +472,7 @@ libspdm_return_t libspdm_transport_storage_decode_message(
                                                             message, is_request_message);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
-                               "libspdm_storage_secured_message_decode - %xu\n", status));
+                               "libspdm_storage_secured_message_decode - %x\n", status));
                 return status;
             }
             return LIBSPDM_STATUS_SUCCESS;
@@ -488,7 +484,7 @@ libspdm_return_t libspdm_transport_storage_decode_message(
                                                     transport_message,
                                                     message_size, message);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
-                LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_decode_message - %xu\n",
+                LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_decode_message - %x\n",
                                status));
                 return status;
             }
@@ -552,11 +548,6 @@ libspdm_return_t libspdm_storage_encode_message(const uint32_t *session_id,
                                                       SPDM_STORAGE_MAX_CONNECTION_ID_MASK;
     }
 
-#if __BYTE_ORDER__==__ORDER_BIG_ENDIAN__
-    storage_header->security_protocol_specific = libspdm_byte_swap_16(
-        storage_header->security_protocol_specific);
-#endif
-
     return LIBSPDM_STATUS_SUCCESS;
 }
 
@@ -604,7 +595,7 @@ libspdm_return_t libspdm_transport_storage_encode_message(
             transport_message_size, transport_message, is_request_message);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
-                           "libspdm_storage_secured_message_encode_descriptors - %xu\n", status));
+                           "libspdm_storage_secured_message_encode - %x\n", status));
             return status;
         }
 
@@ -614,7 +605,7 @@ libspdm_return_t libspdm_transport_storage_encode_message(
             secured_message, &spdm_secured_message_callbacks);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
-                           "libspdm_encode_secured_message - %xu\n", status));
+                           "libspdm_encode_secured_message - %x\n", status));
             return status;
         }
 
@@ -638,7 +629,7 @@ libspdm_return_t libspdm_transport_storage_encode_message(
             secured_message - LIBSPDM_STORAGE_SECURED_MESSAGE_HEADER_RESERVED_BYTES,
             transport_message_size, transport_message);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
-            LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_encode_message - %xu\n",
+            LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_encode_message - %x\n",
                            status));
             return status;
         }
@@ -659,7 +650,7 @@ libspdm_return_t libspdm_transport_storage_encode_message(
                                                 transport_message_size,
                                                 transport_message);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
-            LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_encode_message - %xu\n",
+            LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "transport_encode_message - %x\n",
                            status));
             return status;
         }
@@ -722,11 +713,6 @@ libspdm_return_t libspdm_transport_storage_encode_management_cmd(
     storage_header->security_protocol_specific = transport_operation << 2;
     storage_header->security_protocol_specific |= connection_id &
                                                   SPDM_STORAGE_MAX_CONNECTION_ID_MASK;
-
-#if __BYTE_ORDER__==__ORDER_BIG_ENDIAN__
-    storage_header->security_protocol_specific = libspdm_byte_swap_16(
-        storage_header->security_protocol_specific);
-#endif
 
     return LIBSPDM_STATUS_SUCCESS;
 }
@@ -820,11 +806,7 @@ libspdm_return_t libspdm_transport_storage_decode_management_cmd(
         return LIBSPDM_STATUS_INVALID_MSG_FIELD;
     }
 
-#if __BYTE_ORDER__==__ORDER_BIG_ENDIAN__
-    security_protocol_specific = libspdm_byte_swap_16(storage_header->security_protocol_specific);
-#else
     security_protocol_specific = storage_header->security_protocol_specific;
-#endif
     spsp0 = security_protocol_specific & 0xFF;
     spsp1 = security_protocol_specific >> 8;
 

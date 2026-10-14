@@ -18,9 +18,9 @@ bool libspdm_verify_finish_req_hmac(libspdm_context_t *spdm_context,
     bool result;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
-    uint8_t *mut_cert_chain_buffer;
+    const uint8_t *mut_cert_chain_buffer;
     size_t mut_cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -114,17 +114,19 @@ bool libspdm_verify_finish_req_signature(libspdm_context_t *spdm_context,
     void *context;
     uint8_t slot_id;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
-    uint8_t *mut_cert_chain_buffer;
+    const uint8_t *mut_cert_chain_buffer;
     size_t mut_cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
     libspdm_th_managed_buffer_t th_curr;
+#if LIBSPDM_CERT_PARSE_SUPPORT
     const uint8_t *mut_cert_chain_data;
     size_t mut_cert_chain_data_size;
     const uint8_t *mut_cert_buffer;
     size_t mut_cert_buffer_size;
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 #endif
 #if ((LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && (LIBSPDM_DEBUG_BLOCK_ENABLE)) || \
     !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
@@ -218,7 +220,7 @@ bool libspdm_verify_finish_req_signature(libspdm_context_t *spdm_context,
             return false;
         }
     } else {
-#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+#if (LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && (LIBSPDM_CERT_PARSE_SUPPORT)
         /* Get leaf cert from cert chain*/
         libspdm_get_peer_cert_chain_data(spdm_context,
                                          slot_id,
@@ -245,6 +247,8 @@ bool libspdm_verify_finish_req_signature(libspdm_context_t *spdm_context,
         if (!result) {
             return false;
         }
+#elif LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+        return false;
 #else
         context = spdm_context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key;
         LIBSPDM_ASSERT(context != NULL);
@@ -310,9 +314,9 @@ bool libspdm_generate_finish_rsp_hmac(libspdm_context_t *spdm_context,
     bool result;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
-    uint8_t *mut_cert_chain_buffer;
+    const uint8_t *mut_cert_chain_buffer;
     size_t mut_cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -569,6 +573,7 @@ libspdm_return_t libspdm_get_response_finish(libspdm_context_t *spdm_context, si
     request_size = sizeof(spdm_finish_request_t) + opaque_data_entry_size +
                    signature_size + hmac_size;
 
+    req_slot_id = 0;
     if ((spdm_request->header.param1 & SPDM_FINISH_REQUEST_ATTRIBUTES_SIGNATURE_INCLUDED) != 0) {
         req_slot_id = spdm_request->header.param2;
         if ((req_slot_id != 0xFF) && (req_slot_id >= SPDM_MAX_SLOT_COUNT)) {

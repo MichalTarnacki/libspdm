@@ -17,7 +17,7 @@ bool libspdm_generate_key_exchange_rsp_hmac(libspdm_context_t *spdm_context,
     size_t hash_size;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -203,7 +203,7 @@ static void init_encap_state(libspdm_context_t *spdm_context,
     encap_context->req_slot_id = req_slot_id;
     encap_context->mut_auth_req_slot_id = req_slot_id;
     encap_context->request_id = 0;
-    encap_context->last_encap_request_size = 0;
+    encap_context->has_last_encap_request = false;
     encap_context->flow_type = LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH;
 
     libspdm_zero_mem(&encap_context->last_encap_request_header,
@@ -433,6 +433,11 @@ libspdm_return_t libspdm_get_response_key_exchange(libspdm_context_t *spdm_conte
     opaque_data_length = libspdm_read_uint16((const uint8_t *)request +
                                              sizeof(spdm_key_exchange_request_t) +
                                              req_key_exchange_size);
+    if (opaque_data_length > SPDM_MAX_OPAQUE_DATA_SIZE) {
+        return libspdm_generate_error_response(spdm_context,
+                                               SPDM_ERROR_CODE_INVALID_REQUEST, 0,
+                                               response_size, response);
+    }
     if (request_size < sizeof(spdm_key_exchange_request_t) + req_key_exchange_size +
         sizeof(uint16_t) + opaque_data_length) {
         return libspdm_generate_error_response(spdm_context,
@@ -576,23 +581,29 @@ libspdm_return_t libspdm_get_response_key_exchange(libspdm_context_t *spdm_conte
     spdm_response->header.spdm_version = spdm_request->header.spdm_version;
     spdm_response->header.request_response_code = SPDM_KEY_EXCHANGE_RSP;
 
+    #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
     if (libspdm_is_capabilities_flag_supported(
             spdm_context, false,
             SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HBEAT_CAP,
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HBEAT_CAP)) {
         spdm_response->header.param1 = spdm_context->local_context.heartbeat_period;
-    } else {
+    } else
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+    {
         spdm_response->header.param1 = 0x00;
     }
 
     session_info->local_used_cert_chain_slot_id = slot_id;
 
+    #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
     if (libspdm_is_capabilities_flag_supported(
             spdm_context, false,
             SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HBEAT_CAP,
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HBEAT_CAP)) {
         session_info->heartbeat_period = spdm_context->local_context.heartbeat_period;
-    } else {
+    } else
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+    {
         session_info->heartbeat_period = 0x00;
     }
 
@@ -665,7 +676,8 @@ libspdm_return_t libspdm_get_response_key_exchange(libspdm_context_t *spdm_conte
             /* If Integrator requires mutual authentication but Requester does not support mutual
              * authentication, or Integrator requires the encapsulated mutual authentication flow
              * and Requester does not support encapsulated messages, then return an error to
-             * Requester. */
+             * Requester. If it is not required then the session is established without mutual
+             * authentication. */
             if (mandatory_mut_auth && (!req_mut_auth_cap || (need_encap && !req_encap_cap))) {
                 if (libspdm_get_connection_version(spdm_context) >= SPDM_MESSAGE_VERSION_13) {
                     libspdm_free_session_id(spdm_context, session_id);
@@ -680,7 +692,7 @@ libspdm_return_t libspdm_get_response_key_exchange(libspdm_context_t *spdm_conte
                 }
             }
 
-            if (!need_encap) {
+            if (req_mut_auth_cap && !need_encap) {
                 spdm_response->mut_auth_requested = mut_auth_requested;
                 spdm_response->req_slot_id_param = req_slot_id;
                 /* There is no encapsulated flow to retrieve the Requester's certificate chain,
@@ -692,7 +704,7 @@ libspdm_return_t libspdm_get_response_key_exchange(libspdm_context_t *spdm_conte
                     req_pub_key_id_cap ? 0xFF : req_slot_id;
             }
             #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
-            else if (need_encap && req_encap_cap) {
+            else if (req_mut_auth_cap && need_encap && req_encap_cap) {
                 spdm_response->mut_auth_requested = mut_auth_requested;
                 session_info->peer_used_cert_chain_slot_id = req_slot_id;
                 init_encap_state(spdm_context, session_info, mut_auth_requested, req_slot_id);

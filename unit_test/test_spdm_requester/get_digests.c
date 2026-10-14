@@ -791,6 +791,7 @@ static libspdm_return_t receive_message(
                         m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                         &m_libspdm_local_certificate_chain_test_cert,
                         &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -822,6 +823,7 @@ static libspdm_return_t receive_message(
                         m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                         &m_libspdm_local_certificate_chain_test_cert,
                         &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -1438,7 +1440,7 @@ static void req_get_digests_case23(void **state)
     arbitrary_size = 8;
     assert_int_equal(spdm_context->transcript.message_b.buffer_size,
                      arbitrary_size + m_libspdm_local_buffer_size);
-    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%x):\n",
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%zx):\n",
                    m_libspdm_local_buffer_size));
     libspdm_dump_hex(m_libspdm_local_buffer, m_libspdm_local_buffer_size);
     assert_memory_equal(spdm_context->transcript.message_b.buffer + arbitrary_size,
@@ -1513,6 +1515,7 @@ static void req_get_digests_case24(void **state)
                 m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                 &m_libspdm_local_certificate_chain_test_cert,
                 &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+            assert_true(false);
             return;
         }
     }
@@ -1592,9 +1595,14 @@ static void req_get_digests_case24(void **state)
  * Test 25: a request message is successfully sent and a response message is successfully received
  * in a session.
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a DIGESTS message is received
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP and LIBSPDM_ENABLE_CAPABILITY_PSK_CAP are both
+ * disabled or LIBSPDM_AEAD_AES_256_GCM_SUPPORT is disabled, as the case runs in a session that
+ * uses AES-256-GCM.
  **/
 static void req_get_digests_case25(void **state)
 {
+#if ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)) && \
+    (LIBSPDM_AEAD_AES_256_GCM_SUPPORT)
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -1664,6 +1672,9 @@ static void req_get_digests_case25(void **state)
 
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(session_info->session_transcript.message_m.buffer_size, 0);
+#endif
+#else
+    skip();
 #endif
 }
 

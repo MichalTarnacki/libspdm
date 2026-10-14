@@ -2,25 +2,75 @@ name: Code Coverage
 
 on:
   schedule:
-    - cron:  '0 8 * * 0'
+    # Off the hour, when GitHub is less likely to delay or drop scheduled runs.
+    - cron: '25 8 * * 0'
   workflow_dispatch:
+
+# Runs on one ref wait for each other rather than race the force-push to
+# github_pages.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # As in Tier 1. CHECK_MACRO rejects an illegal configuration at compile time,
+  # and ASSERT_CONFIG=3 makes a failing assert exit rather than deadloop.
+  BASE_CFLAGS: -DLIBSPDM_CHECK_MACRO=1 -DLIBSPDM_DEBUG_LIBSPDM_ASSERT_CONFIG=3
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    if: github.repository == 'DMTF/libspdm' || github.event_name != 'schedule'
+    # Pinned so that the lcov version, which affects the report, changes only
+    # when this file does.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        # Mbed TLS provides neither EdDSA nor the PQC algorithms, so only the
+        # OpenSSL build compiles and tests them.
+        crypto: [mbedtls, openssl]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          submodules: recursive
+          # Only the publish job writes to the repository.
+          persist-credentials: false
+
+      - name: Fetch submodules
+        run: |
+          # Retry rather than fail the run on a transient fetch error.
+          fetch() {
+            local path=$1
+            shift
+            for attempt in 1 2 3; do
+              if git submodule update --init "$@" "$path"; then
+                return 0
+              fi
+              echo "fetch of $path failed, attempt $attempt"
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+
+          fetch unit_test/cmockalib/cmocka --depth 1 --recursive
+          if [ "${{ matrix.crypto }}" = "mbedtls" ]; then
+            fetch os_stub/mbedtlslib/mbedtls --depth 1 --recursive
+          else
+            # libspdm builds OpenSSL from the pinned commit's source alone, so
+            # neither its history nor its own submodules are fetched.
+            fetch os_stub/openssllib/openssl --depth 1
+          fi
 
       - name: Build - Linux
         run: |
           sudo apt-get update
-          sudo apt-get install lcov
+          sudo apt-get install --no-install-recommends -y lcov
           mkdir build
           cd build
-          cmake -E env CFLAGS="-DLIBSPDM_FIPS_MODE=1" cmake -DTOOLCHAIN=GCC -DTARGET=Debug -DCRYPTO=mbedtls -DGCOV=ON ..
+          cmake -E env CFLAGS="${{ env.BASE_CFLAGS }} -DLIBSPDM_FIPS_MODE=1" cmake -DTOOLCHAIN=GCC -DTARGET=Debug -DCRYPTO=${{ matrix.crypto }} -DGCOV=ON ..
           make -j`nproc`
           make copy_sample_key
           make copy_seed
@@ -39,15 +89,16 @@ jobs:
           # libraries are only executed by the fuzzing harnesses.
           ./run_initial_seed.sh
 
-      - name: Generate Coverage
-        env:
-          CI_COMMIT_MESSAGE: Publish code coverage.
-          CI_COMMIT_AUTHOR: Continuous Integration
+      - name: Capture Coverage
         run: |
-          mkdir /tmp/coverage_log
+          # Leave out the branches of LIBSPDM_ASSERT lines, whose failure side a
+          # passing run never takes. genhtml ignores lcov_excl_br_line, so both
+          # captures set it.
           lcov --rc branch_coverage=1 --rc geninfo_gcov_all_blocks=1 \
+            --rc lcov_excl_br_line='LCOV_EXCL_BR_LINE|LIBSPDM_ASSERT' \
             --capture --initial --directory ./build --output-file coverage_base.info
           lcov --rc branch_coverage=1 --rc geninfo_gcov_all_blocks=1 \
+            --rc lcov_excl_br_line='LCOV_EXCL_BR_LINE|LIBSPDM_ASSERT' \
             --capture --directory ./build --output-file coverage_test.info
           lcov --rc branch_coverage=1 \
             --add-tracefile coverage_base.info --add-tracefile coverage_test.info \
@@ -55,15 +106,92 @@ jobs:
           lcov --rc branch_coverage=1 --extract coverage_all.info \
             "${GITHUB_WORKSPACE}/include/*" \
             "${GITHUB_WORKSPACE}/library/*" \
+            --output-file coverage-${{ matrix.crypto }}.info
+
+      - name: Upload tracefile
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.crypto }}
+          path: coverage-${{ matrix.crypto }}.info
+          # The artifact only carries the tracefile to the report job.
+          retention-days: 7
+
+  report:
+    needs: build
+    # Pinned to the build job's image, so that genhtml matches the lcov that
+    # captured the tracefiles.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # genhtml reads the sources at the path that the build jobs measured.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download tracefiles
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+          path: tracefiles
+
+      - name: Generate Coverage
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y lcov
+          mkdir /tmp/coverage_log
+          lcov --rc branch_coverage=1 \
+            --add-tracefile tracefiles/coverage-mbedtls.info \
+            --add-tracefile tracefiles/coverage-openssl.info \
             --output-file coverage.info
-          genhtml --rc branch_coverage=1 coverage.info --output-directory /tmp/coverage_log
-          git fetch origin
-          git checkout github_pages
-          rm -rf ./coverage_log
-          mv /tmp/coverage_log ./
-          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
-          git config --global user.email "void@void.net"
-          git add -f coverage_log/\*
-          git commit -am "${{ env.CI_COMMIT_MESSAGE }}"
-          git reset $(git commit-tree HEAD^{tree} -m "${{ env.CI_COMMIT_MESSAGE }}")
-          git push --force origin github_pages
+          # Without --prefix, genhtml drops library/ from the page paths and
+          # shows include/ under the runner's absolute path. genhtml escapes
+          # --title but writes --header-title as HTML, so the link to the
+          # measured commit goes in the banner.
+          tree_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/tree/${GITHUB_SHA}"
+          genhtml --rc branch_coverage=1 \
+            --title "${GITHUB_SHA}" --prefix "${GITHUB_WORKSPACE}" \
+            --header-title "Code coverage report for <a href=\"${tree_url}\">${GITHUB_REPOSITORY}</a>" \
+            coverage.info --output-directory /tmp/coverage_log
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage_log
+          path: /tmp/coverage_log
+          # The artifact only carries the report to the publish job.
+          retention-days: 7
+
+  # A run on any other branch measures coverage but does not publish it.
+  publish:
+    needs: report
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout github_pages
+        uses: actions/checkout@v7
+        with:
+          ref: github_pages
+
+      - name: Remove previous report
+        run: rm -rf coverage_log
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage_log
+          path: coverage_log
+
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -f coverage_log
+          # github_pages holds a single parentless commit, so its history does
+          # not grow.
+          commit=$(git commit-tree "$(git write-tree)" -m "Publish code coverage.")
+          git push --force origin "$commit:refs/heads/github_pages"

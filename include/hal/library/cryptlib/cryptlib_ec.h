@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -51,13 +51,13 @@ extern bool libspdm_ec_set_priv_key(void *ec_context, const uint8_t *private_key
 /**
  * Sets the public key component into the established EC context.
  *
- * For P-256, the public_size is 64. first 32-byte is X, second 32-byte is Y.
- * For P-384, the public_size is 96. first 48-byte is X, second 48-byte is Y.
- * For P-521, the public_size is 132. first 66-byte is X, second 66-byte is Y.
+ * For P-256, the public_key_size is 64. first 32-byte is X, second 32-byte is Y.
+ * For P-384, the public_key_size is 96. first 48-byte is X, second 48-byte is Y.
+ * For P-521, the public_key_size is 132. first 66-byte is X, second 66-byte is Y.
  *
- * @param[in, out]  ec_context   Pointer to EC context being set.
- * @param[in]       public       Pointer to the buffer to receive generated public X,Y.
- * @param[in]       public_size  The size of public buffer in bytes.
+ * @param[in, out]  ec_context       Pointer to EC context being set.
+ * @param[in]       public_key       Pointer to the buffer to receive generated public X,Y.
+ * @param[in]       public_key_size  The size of public_key buffer in bytes.
  *
  * @retval  true   EC public key component was set successfully.
  * @retval  false  Invalid EC public key component.
@@ -73,29 +73,29 @@ extern bool libspdm_ec_set_pub_key(void *ec_context, const uint8_t *public_key,
  * Generates EC key and returns EC public key (X, Y).
  *
  * This function generates random secret, and computes the public key (X, Y), which is
- * returned via parameter public, public_size.
- * X is the first half of public with size being public_size / 2,
- * Y is the second half of public with size being public_size / 2.
+ * returned via parameter public_key, public_key_size.
+ * X is the first half of public_key with size being public_key_size / 2,
+ * Y is the second half of public_key with size being public_key_size / 2.
  * EC context is updated accordingly.
  * If the public buffer is too small to hold the public X, Y, false is returned and
- * public_size is set to the required buffer size to obtain the public X, Y.
+ * public_key_size is set to the required buffer size to obtain the public X, Y.
  *
- * For P-256, the public_size is 64. first 32-byte is X, second 32-byte is Y.
- * For P-384, the public_size is 96. first 48-byte is X, second 48-byte is Y.
- * For P-521, the public_size is 132. first 66-byte is X, second 66-byte is Y.
+ * For P-256, the public_key_size is 64. first 32-byte is X, second 32-byte is Y.
+ * For P-384, the public_key_size is 96. first 48-byte is X, second 48-byte is Y.
+ * For P-521, the public_key_size is 132. first 66-byte is X, second 66-byte is Y.
  *
  * If ec_context is NULL, then return false.
- * If public_size is NULL, then return false.
- * If public_size is large enough but public is NULL, then return false.
+ * If public_key_size is NULL, then return false.
+ * If public_key_size is large enough but public_key is NULL, then return false.
  *
- * @param[in, out]  ec_context   Pointer to the EC context.
- * @param[out]      public       Pointer to the buffer to receive generated public X,Y.
- * @param[in, out]  public_size  On input, the size of public buffer in bytes.
- *                               On output, the size of data returned in public buffer in bytes.
+ * @param[in, out]  ec_context       Pointer to the EC context.
+ * @param[out]      public_key       Pointer to the buffer to receive generated public X,Y.
+ * @param[in, out]  public_key_size  On input, the size of public_key buffer in bytes.
+ *                                   On output, the size of data returned in public_key buffer in bytes.
  *
  * @retval true   EC public X,Y generation succeeded.
  * @retval false  EC public X,Y generation failed.
- * @retval false  public_size is not large enough.
+ * @retval false  public_key_size is not large enough.
  **/
 extern bool libspdm_ec_generate_key(void *ec_context, uint8_t *public_key, size_t *public_key_size);
 

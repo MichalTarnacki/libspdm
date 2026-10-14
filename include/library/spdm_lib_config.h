@@ -122,7 +122,7 @@
  *      - For a Requester, if the Responder sends a ResponseNotReady ERROR response then the error
  *        is immediately returned to the Integrator. The Requester cannot send a RESPOND_IF_READY
  *        request.
- *      - For a Responder, it cannot send a RESPOND_IF_READY ERROR response and does not support
+ *      - For a Responder, it cannot send a ResponseNotReady ERROR response and does not support
  *        RESPOND_IF_READY.
  *      - For a Responder in an encapsulated flow, if the Requester delivers an encapsulated
  *        ResponseNotReady ERROR then the flow ends, as with any other encapsulated ErrorCode.
@@ -149,7 +149,7 @@
 
 /* Enables assertions and debug printing. When `LIBSPDM_DEBUG_ENABLE` is defined it overrides or
  * sets the values of `LIBSPDM_DEBUG_PRINT_ENABLE`, `LIBSPDM_DEBUG_ASSERT_ENABLE`, and
- * `LIBSPDM_BLOCK_ENABLE` to the value of `LIBSPDM_DEBUG_ENABLE`.
+ * `LIBSPDM_DEBUG_BLOCK_ENABLE` to the value of `LIBSPDM_DEBUG_ENABLE`.
  *
  * Note that if this file is used with CMake and `DTARGET=Release` is defined, then all debugging
  * is disabled.
@@ -182,14 +182,6 @@
 #define LIBSPDM_PSK_MAX_HINT_LENGTH 32
 #endif
 #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP */
-
-/* libspdm allows an Integrator to specify multiple root certificates as trust anchors when
- * verifying certificate chains from an endpoint. This value specifies the maximum number of root
- * certificates that libspdm can support.
- */
-#ifndef LIBSPDM_MAX_ROOT_CERT_SUPPORT
-#define LIBSPDM_MAX_ROOT_CERT_SUPPORT 10
-#endif
 
 /* If the Responder supports it a Requester is allowed to establish multiple secure sessions with
  * the Responder. This value specifies the maximum number of sessions libspdm can support.
@@ -438,6 +430,16 @@
 #ifndef LIBSPDM_CERT_PARSE_SUPPORT
 #define LIBSPDM_CERT_PARSE_SUPPORT 1
 #endif
+
+#if LIBSPDM_CERT_PARSE_SUPPORT
+/* libspdm allows an Integrator to specify multiple root certificates as trust anchors when
+ * verifying certificate chains from an endpoint. This value specifies the maximum number of root
+ * certificates that libspdm can support.
+ */
+#ifndef LIBSPDM_MAX_ROOT_CERT_SUPPORT
+#define LIBSPDM_MAX_ROOT_CERT_SUPPORT 10
+#endif
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 
 /*
  * MinDataTransferSize = 42

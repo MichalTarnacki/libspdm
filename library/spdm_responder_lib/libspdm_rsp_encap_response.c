@@ -334,7 +334,7 @@ libspdm_return_t libspdm_get_response_encapsulated_request(
              * KEY_EXCHANGE_RSP. */
             encap_context->flow_type = LIBSPDM_ENCAP_FLOW_GENERAL;
             encap_context->request_id = 0;
-            encap_context->last_encap_request_size = 0;
+            encap_context->has_last_encap_request = false;
             libspdm_zero_mem(&encap_context->last_encap_request_header,
                              sizeof(encap_context->last_encap_request_header));
         }
@@ -586,6 +586,14 @@ libspdm_return_t libspdm_get_response_encapsulated_response_ack(
     session_id = libspdm_get_encap_session_id_via_last_request(spdm_context);
 
     if (last_request_code != 0) {
+        if ((encap_context->flow_type == LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH) &&
+            (last_request_code == SPDM_GET_DIGESTS) && !encap_context->has_last_encap_request) {
+            /* This answers the GET_DIGESTS that KEY_EXCHANGE_RSP implies, which counts as
+             * issued from now on. The flow has then moved past its first message, and the
+             * request can be reissued after ResponseNotReady. */
+            encap_context->has_last_encap_request = true;
+        }
+
         /* Process the encapsulated response from the Requester before calling the handler. */
         status = libspdm_dispatch_process_encap_response(
             spdm_context, last_request_code,

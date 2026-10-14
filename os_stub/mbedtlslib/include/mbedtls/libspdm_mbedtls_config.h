@@ -4347,7 +4347,7 @@ extern int my_snprintf(char *str, size_t size, const char *format, ...);
  *   time when the ticket was created by the server.
  *
  * The ages might be different due to the client and server clocks not running
- * at the same pace. The typical accuracy of an RTC crystal is ±100 to ±20 parts
+ * at the same pace. The typical accuracy of an RTC crystal is +/-100 to +/-20 parts
  * per million (360 to 72 milliseconds per hour). Default tolerance window is
  * 6s, thus in the worst case clients and servers must sync up their system time
  * every 6000/360/2~=8 hours.
@@ -4379,7 +4379,8 @@ extern int my_snprintf(char *str, size_t size, const char *format, ...);
 
 /**< Maximum number of intermediate CAs in a verification chain. */
 
-/* #define MBEDTLS_X509_MAX_INTERMEDIATE_CA   8 */
+/* libspdm's long-chain unit tests need up to 47 intermediates (ShorterMAXUINT16). */
+#define MBEDTLS_X509_MAX_INTERMEDIATE_CA   64
 
 /**< Maximum length of a path/filename string in bytes including the null terminator character ('\0'). */
 

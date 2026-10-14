@@ -3,8 +3,8 @@
  *  Copyright 2022-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
-#ifndef REQUESTER_WATCHDOGLIB_H
-#define REQUESTER_WATCHDOGLIB_H
+#ifndef RESPONDER_WATCHDOGLIB_H
+#define RESPONDER_WATCHDOGLIB_H
 
 #include "hal/base.h"
 #include "internal/libspdm_lib_config.h"
@@ -28,7 +28,7 @@ extern bool libspdm_start_watchdog(void *spdm_context, uint32_t session_id, uint
 extern bool libspdm_stop_watchdog(void *spdm_context, uint32_t session_id);
 
 /**
- * Reset the watchdog time for a given session ID.
+ * Reset the watchdog timer for a given session ID.
  *
  * @param  spdm_context  A pointer to the SPDM context.
  * @param  session_id    Indicate the SPDM session ID.
@@ -36,4 +36,4 @@ extern bool libspdm_stop_watchdog(void *spdm_context, uint32_t session_id);
 extern bool libspdm_reset_watchdog(void *spdm_context, uint32_t session_id);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
 
-#endif /* REQUESTER_WATCHDOGLIB_H */
+#endif /* RESPONDER_WATCHDOGLIB_H */

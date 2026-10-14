@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -185,6 +185,16 @@ bool libspdm_rsa_set_key(void *rsa_context, const libspdm_rsa_key_tag_t key_tag,
         EVP_PKEY_get_bn_param(ctx->evp_pkey, OSSL_PKEY_PARAM_RSA_EXPONENT1, &bn_dp);
         EVP_PKEY_get_bn_param(ctx->evp_pkey, OSSL_PKEY_PARAM_RSA_EXPONENT2, &bn_dq);
         EVP_PKEY_get_bn_param(ctx->evp_pkey, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &bn_q_inv);
+
+        /* EVP_PKEY_get_bn_param allocates each BIGNUM that it returns. */
+        bn_n_tmp = bn_n;
+        bn_e_tmp = bn_e;
+        bn_d_tmp = bn_d;
+        bn_p_tmp = bn_p;
+        bn_q_tmp = bn_q;
+        bn_dp_tmp = bn_dp;
+        bn_dq_tmp = bn_dq;
+        bn_q_inv_tmp = bn_q_inv;
     }
 
     /* Set RSA key Components by converting octet string to OpenSSL BN representation.
@@ -485,7 +495,7 @@ bool libspdm_rsa_pkcs1_verify_with_nid(void *rsa_context, size_t hash_nid,
     {
         OSSL_PARAM params[2];
         const char *md_name = EVP_MD_get0_name(evp_md);
-        params[0] = OSSL_PARAM_construct_utf8_string("digest", (char *)md_name, 0);
+        params[0] = OSSL_PARAM_construct_utf8_string("digest", (char *)(size_t)md_name, 0);
         params[1] = OSSL_PARAM_construct_end();
 
         rc = EVP_PKEY_verify_init_ex(pctx, params);
@@ -628,7 +638,7 @@ bool libspdm_rsa_pss_verify(void *rsa_context, size_t hash_nid,
     {
         OSSL_PARAM params[2];
         const char *md_name = EVP_MD_get0_name(evp_md);
-        params[0] = OSSL_PARAM_construct_utf8_string("digest", (char *)md_name, 0);
+        params[0] = OSSL_PARAM_construct_utf8_string("digest", (char *)(size_t)md_name, 0);
         params[1] = OSSL_PARAM_construct_end();
 
         rc = EVP_PKEY_verify_init_ex(pctx, params);
@@ -763,7 +773,7 @@ bool libspdm_rsa_pss_verify_fips(void *rsa_context, size_t hash_nid,
     {
         OSSL_PARAM params[2];
         const char *md_name = EVP_MD_get0_name(evp_md);
-        params[0] = OSSL_PARAM_construct_utf8_string("digest", (char *)md_name, 0);
+        params[0] = OSSL_PARAM_construct_utf8_string("digest", (char *)(size_t)md_name, 0);
         params[1] = OSSL_PARAM_construct_end();
 
         rc = EVP_PKEY_verify_init_ex(pctx, params);

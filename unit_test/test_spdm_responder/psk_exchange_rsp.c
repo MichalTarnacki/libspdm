@@ -150,6 +150,7 @@ static void rsp_psk_exchange_rsp_case1(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -227,6 +228,7 @@ static void rsp_psk_exchange_rsp_case2(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -296,6 +298,7 @@ static void rsp_psk_exchange_rsp_case3(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -366,6 +369,7 @@ static void rsp_psk_exchange_rsp_case4(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -438,6 +442,7 @@ static void rsp_psk_exchange_rsp_case5(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -514,6 +519,7 @@ static void rsp_psk_exchange_rsp_case6(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -566,6 +572,9 @@ static void rsp_psk_exchange_rsp_case7(void **state)
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
+    if (spdm_context->session_info[0].session_id != INVALID_SESSION_ID) {
+        libspdm_free_session_id(spdm_context, spdm_context->session_info[0].session_id);
+    }
     spdm_test_context->case_id = 0x7;
     spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_11 <<
                                             SPDM_VERSION_NUMBER_SHIFT_BIT;
@@ -582,6 +591,7 @@ static void rsp_psk_exchange_rsp_case7(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -679,6 +689,7 @@ static void rsp_psk_exchange_rsp_case8(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -768,6 +779,7 @@ static void rsp_psk_exchange_rsp_case9(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -825,14 +837,16 @@ static void rsp_psk_exchange_rsp_case10(void **state)
     uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
     #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     uint8_t measurement_hash[LIBSPDM_MAX_HASH_SIZE];
-    #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
     uint32_t measurement_summary_hash_size;
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
     spdm_psk_exchange_response_t *spdm_response;
     void *data1;
     size_t data_size1;
     uint8_t *ptr;
     size_t opaque_psk_exchange_req_size;
+    #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     bool result;
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -859,6 +873,7 @@ static void rsp_psk_exchange_rsp_case10(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -900,10 +915,10 @@ static void rsp_psk_exchange_rsp_case10(void **state)
     assert_int_equal(spdm_response->header.request_response_code, SPDM_PSK_EXCHANGE_RSP);
     assert_int_equal(spdm_response->rsp_session_id, 0xFFFF);
 
+#if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     measurement_summary_hash_size = libspdm_get_measurement_summary_hash_size(
         spdm_context, false, m_libspdm_psk_exchange_request4.header.param1);
 
-#if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     result = libspdm_generate_measurement_summary_hash(
         spdm_context,
         spdm_context->connection_info.version,
@@ -935,14 +950,16 @@ static void rsp_psk_exchange_rsp_case11(void **state)
     uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
     #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     uint8_t measurement_hash[LIBSPDM_MAX_HASH_SIZE];
-    #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
     uint32_t measurement_summary_hash_size;
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
     spdm_psk_exchange_response_t *spdm_response;
     void *data1;
     size_t data_size1;
     uint8_t *ptr;
     size_t opaque_psk_exchange_req_size;
+    #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     bool result;
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
 
     spdm_test_context = *state;
     spdm_context = spdm_test_context->spdm_context;
@@ -969,6 +986,7 @@ static void rsp_psk_exchange_rsp_case11(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1010,10 +1028,10 @@ static void rsp_psk_exchange_rsp_case11(void **state)
     assert_int_equal(spdm_response->header.request_response_code, SPDM_PSK_EXCHANGE_RSP);
     assert_int_equal(spdm_response->rsp_session_id, 0xFFFF);
 
+#if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     measurement_summary_hash_size = libspdm_get_measurement_summary_hash_size(
         spdm_context, false, m_libspdm_psk_exchange_request5.header.param1);
 
-#if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     result = libspdm_generate_measurement_summary_hash(
         spdm_context,
         spdm_context->connection_info.version,
@@ -1074,6 +1092,7 @@ static void rsp_psk_exchange_rsp_case12(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1161,6 +1180,7 @@ static void rsp_psk_exchange_rsp_case13(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1239,6 +1259,7 @@ static void rsp_psk_exchange_rsp_case14(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1317,6 +1338,7 @@ static void rsp_psk_exchange_rsp_case15(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1398,6 +1420,7 @@ static void rsp_psk_exchange_rsp_case16(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1474,6 +1497,7 @@ static void rsp_psk_exchange_rsp_case17(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1575,6 +1599,7 @@ static void rsp_psk_exchange_rsp_case18(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1632,6 +1657,7 @@ static void rsp_psk_exchange_rsp_case18(void **state)
     free(data1);
 }
 
+#if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
 /**
  * Test 19: the Responder does not require PSK_FINISH, so PSK_EXCHANGE_RSP establishes
  * the session, and both endpoints support Heartbeat with a non-zero HeartbeatPeriod.
@@ -1672,6 +1698,7 @@ static void rsp_psk_exchange_rsp_case19(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1773,6 +1800,7 @@ static void rsp_psk_exchange_rsp_case20(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data1,
                                                          &data_size1, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision[0] = data1;
@@ -1830,6 +1858,129 @@ static void rsp_psk_exchange_rsp_case20(void **state)
 #endif
     free(data1);
 }
+#endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+
+/* Sends PSK_EXCHANGE when both endpoints support Heartbeat and the Integrator has set
+ * heartbeat_period. Returns the HeartbeatPeriod in PSK_EXCHANGE_RSP, and the session that it
+ * starts in *session_info. */
+static uint8_t rsp_psk_exchange_rsp_send_with_heartbeat(libspdm_context_t *spdm_context,
+                                                        uint8_t heartbeat_period,
+                                                        libspdm_session_info_t **session_info)
+{
+    libspdm_return_t status;
+    size_t response_size;
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    spdm_psk_exchange_response_t *spdm_response;
+    uint8_t *ptr;
+    size_t opaque_psk_exchange_req_size;
+
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_11 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_NEGOTIATED;
+    spdm_context->connection_info.capability.flags |=
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_PSK_CAP |
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP |
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HBEAT_CAP;
+    spdm_context->local_context.capability.flags |=
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PSK_CAP_RESPONDER_WITH_CONTEXT |
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MAC_CAP |
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HBEAT_CAP;
+    spdm_context->local_context.heartbeat_period = heartbeat_period;
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.measurement_spec = m_libspdm_use_measurement_spec;
+    spdm_context->connection_info.algorithm.measurement_hash_algo =
+        m_libspdm_use_measurement_hash_algo;
+    spdm_context->connection_info.algorithm.dhe_named_group = m_libspdm_use_dhe_algo;
+    spdm_context->connection_info.algorithm.aead_cipher_suite = m_libspdm_use_aead_algo;
+    spdm_context->connection_info.algorithm.key_schedule = m_libspdm_use_key_schedule_algo;
+
+    libspdm_reset_message_a(spdm_context);
+
+    m_libspdm_psk_exchange_request1.psk_hint_length =
+        (uint16_t)sizeof(LIBSPDM_TEST_PSK_HINT_STRING);
+    m_libspdm_psk_exchange_request1.context_length = LIBSPDM_PSK_CONTEXT_LENGTH;
+    opaque_psk_exchange_req_size =
+        libspdm_get_opaque_data_supported_version_data_size(spdm_context);
+    m_libspdm_psk_exchange_request1.opaque_length = (uint16_t)opaque_psk_exchange_req_size;
+    m_libspdm_psk_exchange_request1.req_session_id = 0xFFFF;
+    ptr = m_libspdm_psk_exchange_request1.psk_hint;
+    libspdm_copy_mem(ptr, sizeof(m_libspdm_psk_exchange_request1.psk_hint),
+                     LIBSPDM_TEST_PSK_HINT_STRING,
+                     sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
+    ptr += m_libspdm_psk_exchange_request1.psk_hint_length;
+    libspdm_get_random_number(LIBSPDM_PSK_CONTEXT_LENGTH, ptr);
+    ptr += m_libspdm_psk_exchange_request1.context_length;
+    libspdm_build_opaque_data_supported_version_data(
+        spdm_context, &opaque_psk_exchange_req_size, ptr);
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_psk_exchange(
+        spdm_context, m_libspdm_psk_exchange_request1_size,
+        &m_libspdm_psk_exchange_request1, &response_size, response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    spdm_response = (void *)response;
+    assert_int_equal(spdm_response->header.request_response_code, SPDM_PSK_EXCHANGE_RSP);
+
+    *session_info = libspdm_get_session_info_via_session_id(spdm_context,
+                                                            spdm_context->latest_session_id);
+    assert_non_null(*session_info);
+
+    return spdm_response->header.param1;
+}
+
+/**
+ * Test 21: both endpoints support Heartbeat, and the Integrator has set a non-zero
+ * HeartbeatPeriod.
+ * Expected behavior: the Responder sends the HeartbeatPeriod in PSK_EXCHANGE_RSP, and records it in
+ * the session.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP is disabled.
+ **/
+static void rsp_psk_exchange_rsp_case21(void **state)
+{
+#if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t heartbeat_period;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x15;
+
+    heartbeat_period = rsp_psk_exchange_rsp_send_with_heartbeat(spdm_context, 2, &session_info);
+    assert_int_equal(heartbeat_period, 2);
+    assert_int_equal(session_info->heartbeat_period, 2);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 22: as test 21, but libspdm is built without LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP, so the
+ * Responder has no watchdog to enforce a HeartbeatPeriod.
+ * Expected behavior: the Responder sends a HeartbeatPeriod of 0 in PSK_EXCHANGE_RSP, and records 0
+ * in the session.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP is enabled.
+ **/
+static void rsp_psk_exchange_rsp_case22(void **state)
+{
+#if !(LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP)
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    uint8_t heartbeat_period;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x16;
+
+    heartbeat_period = rsp_psk_exchange_rsp_send_with_heartbeat(spdm_context, 2, &session_info);
+    assert_int_equal(heartbeat_period, 0);
+    assert_int_equal(session_info->heartbeat_period, 0);
+#else
+    skip();
+#endif
+}
 
 int libspdm_rsp_psk_exchange_rsp_test(void)
 {
@@ -1872,10 +2023,16 @@ int libspdm_rsp_psk_exchange_rsp_test(void)
         cmocka_unit_test(rsp_psk_exchange_rsp_case17),
         /* The Responder using integrator defined opaque data */
         cmocka_unit_test(rsp_psk_exchange_rsp_case18),
+        #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
         /* Heartbeat is supported and HeartbeatPeriod is non-zero */
         cmocka_unit_test_setup(rsp_psk_exchange_rsp_case19, libspdm_unit_test_reset_context),
         /* Heartbeat is supported and HeartbeatPeriod is zero */
         cmocka_unit_test_setup(rsp_psk_exchange_rsp_case20, libspdm_unit_test_reset_context),
+        #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+        /* HeartbeatPeriod when both endpoints support Heartbeat */
+        cmocka_unit_test_setup(rsp_psk_exchange_rsp_case21, libspdm_unit_test_reset_context),
+        /* The same, when LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP is disabled */
+        cmocka_unit_test_setup(rsp_psk_exchange_rsp_case22, libspdm_unit_test_reset_context),
     };
 
     libspdm_test_context_t test_context = {

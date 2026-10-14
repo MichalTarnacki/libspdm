@@ -73,7 +73,7 @@ libspdm_return_t libspdm_get_encap_request_get_certificate_continue(
         return LIBSPDM_STATUS_INVALID_STATE_LOCAL;
     }
 
-    encap_context->last_encap_request_size = 0;
+    encap_context->has_last_encap_request = false;
 
     if (libspdm_get_connection_version(spdm_context) < SPDM_MESSAGE_VERSION_11) {
         return LIBSPDM_STATUS_UNSUPPORTED_CAP;
@@ -144,7 +144,7 @@ libspdm_return_t libspdm_get_encap_request_get_certificate_continue(
     libspdm_copy_mem(&encap_context->last_encap_request_header,
                      sizeof(encap_context->last_encap_request_header),
                      &spdm_request->header, sizeof(spdm_message_header_t));
-    encap_context->last_encap_request_size = *encap_request_size;
+    encap_context->has_last_encap_request = true;
 
     return LIBSPDM_STATUS_SUCCESS;
 }
@@ -368,6 +368,7 @@ libspdm_return_t libspdm_process_encap_response_certificate(
     spdm_context->connection_info.peer_used_cert_chain[slot_id].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
 
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, slot_id);
     if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
         result = libspdm_get_pqc_leaf_cert_public_key_from_cert_chain(
             spdm_context->connection_info.algorithm.base_hash_algo,

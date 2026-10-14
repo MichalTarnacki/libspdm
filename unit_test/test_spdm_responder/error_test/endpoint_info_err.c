@@ -800,6 +800,7 @@ static void rsp_endpoint_info_err_case13(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     for (int i = 0; i < SPDM_MAX_SLOT_COUNT; i++) {
@@ -823,13 +824,6 @@ static void rsp_endpoint_info_err_case13(void **state)
         spdm_context->connection_info.peer_used_cert_chain[1].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[1].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
-    spdm_context->connection_info.algorithm.req_base_asym_alg =
-        (uint16_t)m_libspdm_use_asym_algo;
-    libspdm_get_leaf_cert_public_key_from_cert_chain(
-        spdm_context->connection_info.algorithm.base_hash_algo,
-        spdm_context->connection_info.algorithm.req_base_asym_alg,
-        data, data_size,
-        &spdm_context->connection_info.peer_used_cert_chain[1].leaf_cert_public_key);
 #endif
     spdm_context->connection_info.multi_key_conn_rsp = true;
 
@@ -856,6 +850,8 @@ static void rsp_endpoint_info_err_case13(void **state)
     /* transcript.message_e size check */
     assert_int_equal(spdm_context->transcript.message_e.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**

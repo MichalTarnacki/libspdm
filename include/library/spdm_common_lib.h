@@ -28,7 +28,7 @@ extern "C" {
  *             The message exchange in a connection is plain text.*/
 
 /* Session: In one connection with one device, a host may create multiple sessions.
- *          The session starts with via KEY_EXCHANGE or PSK_EXCHANGE, and step with END_SESSION.
+ *          The session starts with KEY_EXCHANGE or PSK_EXCHANGE, and ends with END_SESSION.
  *          A session can be unique identified by a session ID, returned from the device.
  *          The message exchange in a session is cipher text.*/
 
@@ -112,10 +112,9 @@ typedef enum {
     /* Raw request buffer and size */
     LIBSPDM_DATA_REQUEST_AND_SIZE,
 
-    /* if the context is for a requester. It only needs to be set in VCA cache.
-     * In normal flow, the value is set in GET_VERSION or VERSION automatically.
-     * false means responder
-     * true means requester
+    /* If the context is for a Requester (true) or Responder (false), it only needs to be set by the
+     * Integrator in a VCA cache, or before libspdm_check_context() is called.
+     * In a normal flow, the value is set via GET_VERSION or VERSION automatically.
      **/
     LIBSPDM_DATA_IS_REQUESTER,
 
@@ -333,6 +332,7 @@ libspdm_return_t libspdm_get_data(void *spdm_context,
  * This is typically called after all context data has been populated via the libspdm_set_data
  * function. The function returns on first failure. If LIBSPDM_DEBUG_ENABLE or
  * LIBSPDM_DEBUG_PRINT_ENABLE are enabled then it also prints the failing condition.
+ * LIBSPDM_DATA_IS_REQUESTER should be set before calling.
  *
  * @param  spdm_context  A pointer to the SPDM context.
  *
@@ -385,10 +385,10 @@ libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
 /**
  * Initialize an libspdm_fips_selftest_context.
  *
- * @param  spdm_context         A pointer to the SPDM context.
- * @param  buffer_size          The buffer size to hold large intermediate results.
- * @param  buffer               The buffer provided by integrator to
- *                              hold large intermediate results.
+ * @param  fips_selftest_context  A pointer to the FIPS self-test context.
+ * @param  buffer_size            The buffer size to hold large intermediate results.
+ * @param  buffer                 The buffer provided by integrator to
+ *                                hold large intermediate results.
  */
 libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context,
                                                     size_t buffer_size,
@@ -489,24 +489,22 @@ size_t libspdm_get_context_size(void);
 size_t libspdm_get_context_size_without_secured_context(void);
 
 /**
- * Send an SPDM transport layer message to an endpoint.
+ * Sends an SPDM transport layer message to a peer endpoint.
  *
  * The message is an SPDM message with transport layer wrapper, or a secured SPDM message with
- * transport layer wrapper.
+ * transport layer wrapper. If LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP is not set then it is inside the
+ * buffer acquired through libspdm_device_acquire_sender_buffer_func. If
+ * LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP is set then it is inside the scratch buffer.
  *
- * For Requester, the message is a transport layer SPDM request.
- * For Responder, the message is a transport layer SPDM response.
+ * For a Requester, the message is a transport layer SPDM request, and its timeout is RTT.
+ *
+ * For a Responder, the message is a transport layer SPDM response, its timeout is 0, and the
+ * Responder should not time out when sending the message.
  *
  * @param  spdm_context  A pointer to the SPDM context.
- * @param  message_size  Size, in bytes, of the message data buffer.
- * @param  message       A pointer to a destination buffer to store the message.
- *                       The caller is responsible for having either implicit or explicit ownership
- *                       of the buffer. The message pointer shall be inside of
- *                       [msg_buf_ptr, msg_buf_ptr + max_msg_size] from acquired sender_buffer.
- * @param  timeout       The timeout, in microsends, to use for the execution of the message.
- *                       If called in a Requester context then timeout is equal to RTT.
- *                       If called in a Responder context then timeout is equal to 0 and Responder
- *                       should not timeout when sending the message.
+ * @param  message_size  Size, in bytes, of the message.
+ * @param  message       A pointer to the message to send.
+ * @param  timeout       The timeout, in microseconds, to use for the execution of the message.
  *
  * @retval LIBSPDM_STATUS_SUCCESS   The message was successfully sent to the receiving endpoint.
  * @retval LIBSPDM_STATUS_SEND_FAIL Unable to send message to the receiving endpoint.
@@ -517,26 +515,28 @@ typedef libspdm_return_t (*libspdm_device_send_message_func)(void *spdm_context,
                                                              uint64_t timeout);
 
 /**
- * Receive an SPDM transport layer message from an endpoint.
+ * Receives an SPDM transport layer message from a peer endpoint.
  *
  * The message is an SPDM message with transport layer wrapper or a secured SPDM message with
- * transport layer wrapper.
+ * transport layer wrapper. The received message shall be inside the buffer that message points to
+ * on input.
  *
- * For Requester, the message is a transport layer SPDM response.
- * For Responder, the message is a transport layer SPDM request.
+ * For a Requester, the message is a transport layer SPDM response, and its timeout is RTT plus
+ * either CT or ST1. If LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP is set then the Requester receives
+ * the message into the scratch buffer. If LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP is not set then the
+ * Requester receives the message into the buffer acquired through
+ * libspdm_device_acquire_receiver_buffer_func.
+ *
+ * For a Responder, the message is a transport layer SPDM request, its timeout is 0, and the
+ * Responder should not time out when receiving the message. The Responder receives the message
+ * into the buffer acquired through libspdm_device_acquire_receiver_buffer_func.
  *
  * @param  spdm_context  A pointer to the SPDM context.
- * @param  message_size  Size, in bytes, of the message data buffer.
- * @param  message       A pointer to a destination buffer to store the message.
- *                       The caller is responsible for having either implicit or explicit ownership
- *                       of the buffer. On input, the message pointer shall be msg_buf_ptr from
- *                       acquired receiver_buffer. On output, the message pointer shall be inside of
- *                       [msg_buf_ptr, msg_buf_ptr + max_msg_size] from acquired receiver_buffer.
- * @param  timeout       The timeout, in microsends, to use for the execution of the message.
- *                       If called in a Requester context then timeout is equal to RTT plus either
- *                       CT or ST1.
- *                       If called in a Responder context then timeout is equal to 0 and Responder
- *                       should not timeout when receiving the message.
+ * @param  message_size  On input, the size, in bytes, of the buffer that message points to.
+ *                       On output, the size, in bytes, of the received message.
+ * @param  message       On input, a pointer to the buffer to receive the message into.
+ *                       On output, a pointer to the received message.
+ * @param  timeout       The timeout, in microseconds, to use for the execution of the message.
  *
  * @retval LIBSPDM_STATUS_SUCCESS      The message was successfully received from the sending
  *                                     endpoint.
@@ -548,23 +548,32 @@ typedef libspdm_return_t (*libspdm_device_receive_message_func)(void *spdm_conte
                                                                 uint64_t timeout);
 
 /**
- * Register SPDM device input/output functions.
+ * Registers SPDM device input/output functions.
  *
  * This function must be called after libspdm_init_context, and before any SPDM communication.
  *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  send_message                  The function to send an SPDM transport layer message.
- * @param  receive_message               The function to receive an SPDM transport layer message.
+ * The Requester calls these functions to send and receive every message.
+ * The Responder calls these functions from libspdm_responder_dispatch_message.
+ *
+ * @param  spdm_context     A pointer to the SPDM context.
+ * @param  send_message     The function to send an SPDM transport layer message.
+ * @param  receive_message  The function to receive an SPDM transport layer message.
  **/
 void libspdm_register_device_io_func(
     void *spdm_context, libspdm_device_send_message_func send_message,
     libspdm_device_receive_message_func receive_message);
 
 /**
- * Acquire a device sender buffer for transport layer message.
+ * Acquires a device sender buffer for a transport layer message.
  *
- * @param  context       A pointer to the SPDM context.
- * @param  msg_buf_ptr   A pointer to a sender buffer.
+ * libspdm acquires the sender buffer before it builds a message to send, and releases it after the
+ * message has been sent. If LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP is set then libspdm builds the
+ * message in the scratch buffer instead, but it still acquires and releases the sender buffer.
+ *
+ * The size of the buffer is the sender_buffer_size given to libspdm_register_device_buffer_func.
+ *
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  msg_buf_ptr   On output, a pointer to the sender buffer.
  *
  * @retval LIBSPDM_STATUS_SUCCESS       The sender buffer has been acquired.
  * @retval LIBSPDM_STATUS_ACQUIRE_FAIL  Unable to acquire sender buffer.
@@ -573,19 +582,28 @@ typedef libspdm_return_t (*libspdm_device_acquire_sender_buffer_func)(
     void *spdm_context, void **msg_buf_ptr);
 
 /**
- * Release a device sender buffer for transport layer message.
+ * Releases a device sender buffer for a transport layer message.
  *
- * @param  context                       A pointer to the SPDM context.
- * @param  msg_buf_ptr                   A pointer to a sender buffer.
+ * libspdm releases the sender buffer that libspdm_device_acquire_sender_buffer_func returned.
+ *
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  msg_buf_ptr   A pointer to the sender buffer.
  **/
-typedef void (*libspdm_device_release_sender_buffer_func)(void *spdm_context,
-                                                          const void *msg_buf_ptr);
+typedef void (*libspdm_device_release_sender_buffer_func)(
+    void *spdm_context, const void *msg_buf_ptr);
 
 /**
- * Acquire a device receiver buffer for transport layer message.
+ * Acquires a device receiver buffer for a transport layer message.
  *
- * @param  context       A pointer to the SPDM context.
- * @param  msg_buf_pt    A pointer to a receiver buffer.
+ * libspdm acquires the receiver buffer before it receives a message, and releases it after it has
+ * processed the message. If LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP is set then the Requester receives
+ * the message into the scratch buffer instead, but it still acquires and releases the receiver
+ * buffer.
+ *
+ * The size of the buffer is the receiver_buffer_size given to libspdm_register_device_buffer_func.
+ *
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  msg_buf_ptr   On output, a pointer to the receiver buffer.
  *
  * @retval LIBSPDM_STATUS_SUCCESS       The receiver buffer has been acquired.
  * @retval LIBSPDM_STATUS_ACQUIRE_FAIL  Unable to acquire receiver buffer.
@@ -594,48 +612,34 @@ typedef libspdm_return_t (*libspdm_device_acquire_receiver_buffer_func)(
     void *spdm_context, void **msg_buf_ptr);
 
 /**
- * Release a device receiver buffer for transport layer message.
+ * Releases a device receiver buffer for a transport layer message.
  *
- * @param  context      A pointer to the SPDM context.
- * @param  msg_buf_ptr  A pointer to a receiver buffer.
+ * libspdm releases the receiver buffer that libspdm_device_acquire_receiver_buffer_func returned.
+ *
+ * @param  spdm_context  A pointer to the SPDM context.
+ * @param  msg_buf_ptr   A pointer to the receiver buffer.
  **/
-typedef void (*libspdm_device_release_receiver_buffer_func)(void *spdm_context,
-                                                            const void *msg_buf_ptr);
+typedef void (*libspdm_device_release_receiver_buffer_func)(
+    void *spdm_context, const void *msg_buf_ptr);
 
 /**
- * Register SPDM device buffer management functions.
+ * Registers SPDM device buffer management functions.
  *
- * This function must be called after libspdm_init_context, and before any SPDM communication.
+ * This function must be called after libspdm_init_context, and before any SPDM communication. It
+ * should be called after libspdm_register_transport_layer_func, as it uses the transport header and
+ * tail sizes given to that function.
  *
- * The sender_buffer_size and receiver_buffer_size must be no smaller than
- * MAX (non-secure Transport Message Header Size +
- *          SPDM_CAPABILITIES.DataTransferSize +
- *          max alignment pad size (transport specific),
- *      secure Transport Message Header Size +
- *          sizeof(spdm_secured_message_a_data_header1_t) +
- *          length of sequence_number (transport specific) +
- *          sizeof(spdm_secured_message_a_data_header2_t) +
- *          sizeof(spdm_secured_message_cipher_header_t) +
- *          App Message Header Size (transport specific) +
- *          SPDM_CAPABILITIES.DataTransferSize +
- *          maximum random data size (transport specific) +
- *          AEAD MAC size (16) +
- *          max alignment pad size (transport specific)).
+ * Each buffer holds one transport layer message. Subtracting transport_header_size and
+ * transport_tail_size from each buffer size gives the largest SPDM message that fits in a single
+ * transfer. For the receiver buffer this is the DataTransferSize that libspdm reports in
+ * GET_CAPABILITIES / CAPABILITIES. For the sender buffer it is the largest SPDM message that
+ * libspdm sends in a single transfer. Both values must be greater than or equal to
+ * SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12 and less than or equal to max_spdm_msg_size.
  *
- * Finally, the SPDM_CAPABILITIES.DataTransferSize will be calculated based upon it.
- *
- *   For MCTP,
- *          Transport Message Header Size = sizeof(mctp_message_header_t)
- *          length of sequence_number = 2
- *          App Message Header Size = sizeof(mctp_message_header_t)
- *          maximum random data size = MCTP_MAX_RANDOM_NUMBER_COUNT
- *          max alignment pad size = 0
- *   For PCI_DOE,
- *          Transport Message Header Size = sizeof(pci_doe_data_object_header_t)
- *          length of sequence_number = 0
- *          App Message Header Size = 0
- *          maximum random data size = 0
- *          max alignment pad size = 3
+ * The sender buffer and the receiver buffer may be the same buffer, as libspdm releases each buffer
+ * before it acquires the other. They may also have different sizes, but if the endpoint does not
+ * support chunking then max_spdm_msg_size equals the receiver's DataTransferSize, so the sender
+ * buffer must not be larger than the receiver buffer.
  *
  * @param  spdm_context             A pointer to the SPDM context.
  * @param  sender_buffer_size       Size in bytes of the sender buffer.
@@ -655,15 +659,20 @@ void libspdm_register_device_buffer_func(
     libspdm_device_release_receiver_buffer_func release_receiver_buffer);
 
 /**
- * Encode an SPDM or APP message to a transport layer message.
+ * Encodes an SPDM or APP message to a transport layer message.
  *
- * For normal SPDM message, it adds the transport layer wrapper.
- * For secured SPDM message, it encrypts a secured message then adds the transport layer wrapper.
- * For secured APP message, it encrypts a secured message then adds the transport layer wrapper.
+ * For a normal SPDM message, it adds the transport layer wrapper.
+ * For a secured SPDM message, it encrypts a secured message then adds the transport layer wrapper.
+ * For a secured APP message, it encrypts a secured message then adds the transport layer wrapper.
  *
  * The APP message is encoded to a secured message directly in SPDM session.
  * The APP message format is defined by the transport layer.
  * Take MCTP as example: APP message == MCTP header (MCTP_MESSAGE_TYPE_SPDM) + SPDM message
+ *
+ * At least transport_header_size bytes precede the message in its buffer, so that headers can be
+ * added in place. A normal message is inside the buffer that transport_message points to, and a
+ * secured message is inside the scratch buffer. The transport message may start after the
+ * beginning of the buffer that transport_message points to on input.
  *
  * @param  spdm_context            A pointer to the SPDM context.
  * @param  session_id              Indicates if it is a secured message protected via SPDM session.
@@ -671,14 +680,12 @@ void libspdm_register_device_buffer_func(
  *                                 If session_id is not NULL, it is a secured message.
  * @param  is_app_message          Indicates if it is an APP message or SPDM message.
  * @param  is_request_message      Indicates if it is a request message.
- * @param  message_size            Size in bytes of the message data buffer.
- * @param  message                 A pointer to a source buffer to store the message.
- *                                 For normal message, it shall point to the acquired sender buffer.
- *                                 For secured message, it shall point to the scratch buffer in spdm_context.
- * @param  transport_message_size  Size in bytes of the transport message data buffer.
- * @param  transport_message       A pointer to a destination buffer to store the transport message.
- *                                 On input, it shall be msg_buf_ptr from sender buffer.
- *                                 On output, it will point to acquired sender buffer.
+ * @param  message_size            Size in bytes of the message.
+ * @param  message                 A pointer to the message.
+ * @param  transport_message_size  On input, the size in bytes of the buffer that transport_message
+ *                                 points to. On output, the size in bytes of the transport message.
+ * @param  transport_message       On input, a pointer to the buffer for the transport message.
+ *                                 On output, a pointer to the transport message.
  **/
 typedef libspdm_return_t (*libspdm_transport_encode_message_func)(
     void *spdm_context, const uint32_t *session_id, bool is_app_message,
@@ -687,30 +694,40 @@ typedef libspdm_return_t (*libspdm_transport_encode_message_func)(
     void **transport_message);
 
 /**
- * Decode an SPDM or APP message from a transport layer message.
+ * Decodes an SPDM or APP message from a transport layer message.
  *
- * For normal SPDM message, it removes the transport layer wrapper,
- * For secured SPDM message, it removes the transport layer wrapper, then decrypts and verifies a secured message.
- * For secured APP message, it removes the transport layer wrapper, then decrypts and verifies a secured message.
+ * For a normal SPDM message, it removes the transport layer wrapper.
+ * For a secured SPDM message, it removes the transport layer wrapper, then decrypts and verifies a
+ * secured message.
+ * For a secured APP message, it removes the transport layer wrapper, then decrypts and verifies a
+ * secured message.
  *
  * The APP message is decoded from a secured message directly in SPDM session.
  * The APP message format is defined by the transport layer.
  * Take MCTP as example: APP message == MCTP header (MCTP_MESSAGE_TYPE_SPDM) + SPDM message
  *
+ * For a Requester, *session_id points to the session ID on input if the Requester expects a
+ * secured message, and is NULL otherwise.
+ *
+ * For a Responder, *session_id is NULL on input.
+ *
+ * Transports whose messages do not indicate if they are secured, such as storage, use the input
+ * session ID to decode the message.
+ *
+ * A secured message is decrypted into the buffer that message points to on input, which is inside
+ * the scratch buffer. A decoded normal message is inside transport_message.
+ *
  * @param  spdm_context            A pointer to the SPDM context.
- * @param  session_id              Indicates if it is a secured message protected via SPDM session.
- *                                 If session_id is NULL, it is a normal message.
- *                                 If session_id is not NULL, it is a secured message.
- * @param  is_app_message          Indicates if it is an APP message or SPDM message.
+ * @param  session_id              On input, a pointer to the expected session ID, or NULL.
+ *                                 On output, a pointer to the message's session ID, or NULL.
+ * @param  is_app_message          On output, indicates if it is an APP message or SPDM message.
  * @param  is_request_message      Indicates if it is a request message.
- * @param  transport_message_size  Size in bytes of the transport message data buffer.
- * @param  transport_message       A pointer to a source buffer to store the transport message.
- *                                 For normal message or secured message, it shall point to acquired receiver buffer.
- * @param  message_size            Size in bytes of the message data buffer.
- * @param  message                 A pointer to a destination buffer to store the message.
- *                                 On input, it shall point to the scratch buffer in spdm_context.
- *                                 On output, for normal message, it will point to the original receiver buffer.
- *                                 On output, for secured message, it will point to the scratch buffer in spdm_context.
+ * @param  transport_message_size  Size in bytes of the transport message.
+ * @param  transport_message       A pointer to the received transport message.
+ * @param  message_size            On input, the size in bytes of the buffer that message points to.
+ *                                 On output, the size in bytes of the decoded message.
+ * @param  message                 On input, a pointer to the buffer for a decrypted message.
+ *                                 On output, a pointer to the decoded message.
  **/
 typedef libspdm_return_t (*libspdm_transport_decode_message_func)(
     void *spdm_context, uint32_t **session_id,
@@ -719,26 +736,33 @@ typedef libspdm_return_t (*libspdm_transport_decode_message_func)(
     size_t *message_size, void **message);
 
 /**
- * Return the maximum transport layer message header size.
- * Transport Message Header Size + sizeof(spdm_secured_message_cipher_header_t))
- *
- * For MCTP, Transport Message Header Size = sizeof(mctp_message_header_t)
- * For PCI_DOE, Transport Message Header Size = sizeof(pci_doe_data_object_header_t)
- *
- * @param  spdm_context  A pointer to the SPDM context.
- *
- * @return size of maximum transport layer message header size
- **/
-typedef uint32_t (*libspdm_transport_get_header_size_func)(void *spdm_context);
-
-/**
- * Register SPDM transport layer encode/decode functions for SPDM or APP messages.
+ * Registers SPDM transport layer encode/decode functions for SPDM or APP messages.
  *
  * This function must be called after libspdm_init_context, and before any SPDM communication.
+ * libspdm_register_device_buffer_func should be called after this function, as it uses the
+ * transport header and tail sizes. libspdm_set_scratch_buffer must be called after this function,
+ * as the size of the scratch buffer depends on the sizes given here.
  *
- * @param  spdm_context               A pointer to the SPDM context.
- * @param  transport_encode_message   The function to encode an SPDM or APP message to a transport layer message.
- * @param  transport_decode_message   The function to decode an SPDM or APP message from a transport layer message.
+ * max_spdm_msg_size is reported as MaxSPDMmsgSize in GET_CAPABILITIES / CAPABILITIES, and the SPDM
+ * messages that libspdm sends are also limited to it. It must be greater than or equal to the
+ * DataTransferSize values that libspdm_register_device_buffer_func calculates. If the endpoint does
+ * not support chunking (CHUNK_CAP) then it must be equal to DataTransferSize.
+ *
+ * transport_tail_size includes any alignment padding that the transport layer adds. If the
+ * endpoint supports secure sessions then transport_header_size includes the headers of a secured
+ * message, and transport_tail_size includes its random data and MAC.
+ *
+ * @param  spdm_context              A pointer to the SPDM context.
+ * @param  max_spdm_msg_size         The size, in bytes, of the largest SPDM message that this
+ *                                   endpoint receives.
+ * @param  transport_header_size     The size, in bytes, of the largest header that the transport
+ *                                   layer adds before an SPDM message.
+ * @param  transport_tail_size       The size, in bytes, of the largest tail that the transport
+ *                                   layer adds after an SPDM message.
+ * @param  transport_encode_message  The function to encode an SPDM or APP message to a transport
+ *                                   layer message.
+ * @param  transport_decode_message  The function to decode an SPDM or APP message from a transport
+ *                                   layer message.
  **/
 void libspdm_register_transport_layer_func(
     void *spdm_context,
@@ -749,24 +773,30 @@ void libspdm_register_transport_layer_func(
     libspdm_transport_decode_message_func transport_decode_message);
 
 /**
- * Get the size of required scratch buffer.
+ * Gets the size of the required scratch buffer.
  *
  * The SPDM Integrator must call libspdm_get_sizeof_required_scratch_buffer to get the size,
  * then allocate enough scratch buffer and call libspdm_set_scratch_buffer().
  *
- * @param  context  A pointer to the SPDM context.
+ * The size depends on the max_spdm_msg_size, transport_header_size, and transport_tail_size given
+ * to libspdm_register_transport_layer_func, so this function must be called after that function.
+ * It also depends on whether LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP and
+ * LIBSPDM_RESPOND_IF_READY_SUPPORT are set.
+ *
+ * @param  spdm_context  A pointer to the SPDM context.
  *
  * @return the size of required scratch buffer.
  **/
 size_t libspdm_get_sizeof_required_scratch_buffer (void *spdm_context);
 
 /**
- * Set the scratch buffer.
+ * Sets the scratch buffer.
  *
- * The size of scratch buffer must be larger than the value returned in
+ * The size of the scratch buffer must be greater than or equal to the value returned by
  * libspdm_get_sizeof_required_scratch_buffer().
  *
- * This function must be called after libspdm_init_context, and before any SPDM communication.
+ * This function must be called after libspdm_init_context and
+ * libspdm_register_transport_layer_func, and before any SPDM communication.
  *
  * @param  spdm_context         A pointer to the SPDM context.
  * @param  scratch_buffer       Buffer address of the scratch buffer.
@@ -779,11 +809,14 @@ void libspdm_set_scratch_buffer (
     size_t scratch_buffer_size);
 
 /**
- * Get the scratch buffer.
+ * Gets the scratch buffer.
+ *
+ * The size excludes the sections that libspdm reserves for its copies of requests, and any space
+ * beyond the required size.
  *
  * @param  spdm_context         A pointer to the SPDM context.
- * @param  scratch_buffer       Buffer address of the scratch buffer.
- * @param  scratch_buffer_size  Size of the scratch buffer.
+ * @param  scratch_buffer       On output, the address of the scratch buffer.
+ * @param  scratch_buffer_size  On output, the size of the scratch buffer.
  *
  **/
 void libspdm_get_scratch_buffer (
@@ -823,13 +856,13 @@ typedef bool (*libspdm_verify_spdm_cert_chain_func)(
  *
  * If it is NOT registered, the default verification in SPDM lib will be used. It verifies:
  *  1) The integrity of the certificate chain, (Root Cert Hash->Root Cert->Cert Chain), according to X.509.
- *  2) The trust anchor, according LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT or LIBSPDM_DATA_PEER_PUBLIC_CERT_CHAIN.
+ *  2) The trust anchor, according to LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT.
  * If it is registered, SPDM lib will use this function to verify the certificate.
  *
  * This function must be called after libspdm_init_context, and before any SPDM communication.
  *
- * @param  spdm_context        A pointer to the SPDM context.
- * @param  verify_certificate  The function to verify an SPDM certificate after GET_CERTIFICATE.
+ * @param  spdm_context            A pointer to the SPDM context.
+ * @param  verify_spdm_cert_chain  The function to verify an SPDM certificate after GET_CERTIFICATE.
  **/
 void libspdm_register_verify_spdm_cert_chain_func(
     void *spdm_context,
@@ -856,9 +889,9 @@ void *libspdm_get_session_info_via_session_id(void *spdm_context, uint32_t sessi
 void *libspdm_get_secured_message_context_via_session_id(void *spdm_context, uint32_t session_id);
 
 /**
- * This function gets the secured message context via session ID.
+ * This function gets the secured message context via session info.
  *
- * @param  spdm_session_info  A pointer to the SPDM context.
+ * @param  spdm_session_info  A pointer to the SPDM session info.
  *
  * @return secured message context.
  **/
@@ -956,7 +989,7 @@ bool libspdm_get_local_public_key_buffer(void *spdm_context,
  * byte2 - libspdm minor version
  * byte1 - libspdm patch version
  * byte0 - libspdm alpha
- *         (office release with tag: 0, release candidate with tag: 1, non official release: 0xFF)
+ *         (official release with tag: 0, release candidate with tag: 1, non official release: 0xFF)
  **/
 uint32_t libspdm_module_version(void);
 
@@ -1008,7 +1041,7 @@ typedef libspdm_return_t (*libspdm_vendor_response_callback_func)(
  * @param svh_vendor_id_len  Length, in bytes, of the svh_vendor_id field.
  * @param svh_vendor_id      Vendor ID assigned by the Registry or Standards Body. If the value of
  *                           svh_vendor_id_len is 0 then this is NULL.
- * @param event_type_id      Event type identifier. If svh_id is SPDM_REGISTRY_ID_ DMTF then this is
+ * @param event_type_id      Event type identifier. If svh_id is SPDM_REGISTRY_ID_DMTF then this is
  *                           one of the SPDM_DMTF_EVENT_TYPE_* macros.
  * @param event_detail_len   Size, in bytes, of event_detail.
  * @param event_detail       Details of the event.

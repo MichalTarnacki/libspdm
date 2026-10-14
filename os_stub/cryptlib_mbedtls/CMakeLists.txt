@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 add_library(cryptlib_mbedtls STATIC "")
 
@@ -51,17 +51,12 @@ target_sources(cryptlib_mbedtls
         sys_call/crt_wrapper_host.c
 )
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    target_compile_options(cryptlib_mbedtls PRIVATE -Wno-incompatible-pointer-types -Wno-pointer-sign)
-endif()
-
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    if((TOOLCHAIN STREQUAL "CBMC") OR (TOOLCHAIN STREQUAL "VS2015") OR (TOOLCHAIN STREQUAL "VS2019") OR (TOOLCHAIN STREQUAL "VS2022"))
-        target_compile_options(cryptlib_mbedtls PRIVATE /wd4090 /wd4200)
-    endif()
-endif()
-
+# Mbed TLS sets these on its own libraries, which this target does not link.
 if(MBEDTLS_CONFIG_FILE)
+    target_compile_definitions(cryptlib_mbedtls PRIVATE -DMBEDTLS_CONFIG_FILE="${MBEDTLS_CONFIG_FILE}")
 else()
     target_compile_definitions(cryptlib_mbedtls PRIVATE -DMBEDTLS_CONFIG_FILE=<libspdm_mbedtls_config.h>)
+endif()
+if(MBEDTLS_USER_CONFIG_FILE)
+    target_compile_definitions(cryptlib_mbedtls PRIVATE -DMBEDTLS_USER_CONFIG_FILE="${MBEDTLS_USER_CONFIG_FILE}")
 endif()

@@ -16,9 +16,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #endif
-#ifdef TEST_WITH_KLEE
-#include <klee/klee.h>
-#endif
 
 size_t libspdm_alignment_size(size_t size)
 {
@@ -54,20 +51,6 @@ bool libspdm_init_test_buffer(const char *file_name, size_t max_buffer_size,
     size_t aligned_size;
     size_t copy_size;
     size_t BytesRead;
-
-#ifdef TEST_WITH_KLEE
-    /* For test with KLEE the whole buffer is symbolic, so it is sized by the caller. */
-    buffer = malloc(max_buffer_size);
-    if (buffer == NULL) {
-        return false;
-    }
-    *test_buffer = buffer;
-    if (buffer_size != NULL) {
-        *buffer_size = max_buffer_size;
-    }
-    klee_make_symbolic((uint8_t *)buffer, max_buffer_size, "buffer");
-    return true;
-#else
 
     file = fopen(file_name, "rb");
     if (file == NULL) {
@@ -119,7 +102,6 @@ bool libspdm_init_test_buffer(const char *file_name, size_t max_buffer_size,
     }
 
     return true;
-#endif
 }
 
 #ifdef TEST_WITH_LIBFUZZER
@@ -164,26 +146,26 @@ int main(int argc, char **argv)
     bool res;
     void *test_buffer;
     size_t test_buffer_size;
-    char *file_name;
+    int index;
 
     if (argc <= 1) {
         printf("error - missing input file\n");
         exit(1);
     }
 
-    file_name = argv[1];
-
-    /* 1. Initialize test_buffer*/
-    res = libspdm_init_test_buffer(file_name, libspdm_get_max_buffer_size(), &test_buffer,
-                                   &test_buffer_size);
-    if (!res) {
-        printf("error - fail to init test buffer\n");
-        return 0;
+    for (index = 1; index < argc; index++) {
+        /* 1. Initialize test_buffer*/
+        res = libspdm_init_test_buffer(argv[index], libspdm_get_max_buffer_size(), &test_buffer,
+                                       &test_buffer_size);
+        if (!res) {
+            printf("error - fail to init test buffer\n");
+            return 1;
+        }
+        /* 2. Run test*/
+        libspdm_run_test_harness(test_buffer, test_buffer_size);
+        /* 3. Clean up*/
+        free(test_buffer);
     }
-    /* 2. Run test*/
-    libspdm_run_test_harness(test_buffer, test_buffer_size);
-    /* 3. Clean up*/
-    free(test_buffer);
     return 0;
 }
 #endif

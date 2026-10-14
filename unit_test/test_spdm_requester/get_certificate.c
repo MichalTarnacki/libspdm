@@ -184,6 +184,21 @@ static libspdm_return_t send_message(
     case 0x20:
     case 0x21:
         return LIBSPDM_STATUS_SUCCESS;
+    case 0x22: {
+        const spdm_get_certificate_large_request_t *spdm_request;
+
+        spdm_request = (const void *)((const uint8_t *)request +
+                                      sizeof(libspdm_test_message_header_t));
+
+        /* A Length of 0xFFFF in SPDM 1.4 asks for the whole certificate chain. */
+        assert_int_equal(spdm_request->header.param1,
+                         SPDM_GET_CERTIFICATE_REQUEST_LARGE_CERT_CHAIN);
+        assert_int_equal(spdm_request->offset, 0);
+        assert_int_equal(spdm_request->length, 0);
+        assert_int_equal(spdm_request->large_offset, 0);
+        assert_int_equal(spdm_request->large_length, SPDM_MAX_CERTIFICATE_CHAIN_SIZE_14);
+    }
+        return LIBSPDM_STATUS_SUCCESS;
     default:
         return LIBSPDM_STATUS_SEND_FAIL;
     }
@@ -213,6 +228,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -280,6 +296,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -411,6 +428,7 @@ static libspdm_return_t receive_message(
                         &m_libspdm_local_certificate_chain,
                         &m_libspdm_local_certificate_chain_size, NULL,
                         NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -554,6 +572,7 @@ static libspdm_return_t receive_message(
                         &m_libspdm_local_certificate_chain,
                         &m_libspdm_local_certificate_chain_size, NULL,
                         NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -624,6 +643,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -697,6 +717,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
             if (m_libspdm_local_certificate_chain == NULL) {
@@ -783,6 +804,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -850,6 +872,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     LIBSPDM_TEST_CERT_SMALL, &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -921,6 +944,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -987,6 +1011,7 @@ static libspdm_return_t receive_message(
                     SPDM_ALGORITHMS_BASE_ASYM_ALGO_TPM_ALG_RSASSA_2048,
                     LIBSPDM_TEST_CERT_MAXUINT16, &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_SUCCESS;
             }
         }
@@ -1107,6 +1132,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
             if (m_libspdm_local_certificate_chain == NULL) {
@@ -1119,6 +1145,7 @@ static libspdm_return_t receive_message(
                 m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                 &root_cert_data,
                 &root_cert_size, NULL, NULL)) {
+            assert_true(false);
             return LIBSPDM_STATUS_RECEIVE_FAIL;
         }
         /* load certificate*/
@@ -1229,6 +1256,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
             if (m_libspdm_local_certificate_chain == NULL) {
@@ -1241,6 +1269,7 @@ static libspdm_return_t receive_message(
                 m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                 &root_cert_data,
                 &root_cert_size, NULL, NULL)) {
+            assert_true(false);
             return LIBSPDM_STATUS_RECEIVE_FAIL;
         }
         /* load certificate*/
@@ -1404,6 +1433,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -1471,6 +1501,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -1538,6 +1569,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -1607,6 +1639,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -1678,6 +1711,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -1748,6 +1782,7 @@ static libspdm_return_t receive_message(
                             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                             &m_libspdm_local_certificate_chain,
                             &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                        assert_true(false);
                         return LIBSPDM_STATUS_RECEIVE_FAIL;
                     }
                 } else {
@@ -1755,6 +1790,7 @@ static libspdm_return_t receive_message(
                             1, m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                             &m_libspdm_local_certificate_chain,
                             &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                        assert_true(false);
                         return LIBSPDM_STATUS_RECEIVE_FAIL;
                     }
                 }
@@ -1822,6 +1858,7 @@ static libspdm_return_t receive_message(
                 if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                                      m_libspdm_use_asym_algo, &data,
                                                                      &data_size, NULL, NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             } else {
@@ -1830,6 +1867,7 @@ static libspdm_return_t receive_message(
                                                                               m_libspdm_use_asym_algo,
                                                                               &data,
                                                                               &data_size, NULL, NULL)) {
+                    assert_true(false);
                     return LIBSPDM_STATUS_RECEIVE_FAIL;
                 }
             }
@@ -1922,6 +1960,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -2006,6 +2045,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -2073,6 +2113,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -2140,6 +2181,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -2211,6 +2253,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -2272,6 +2315,7 @@ static libspdm_return_t receive_message(
                     m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
                     &m_libspdm_local_certificate_chain,
                     &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+                assert_true(false);
                 return LIBSPDM_STATUS_RECEIVE_FAIL;
             }
         }
@@ -2366,6 +2410,48 @@ static libspdm_return_t receive_message(
                                               false, spdm_response_size,
                                               spdm_response, response_size,
                                               response);
+    }
+        return LIBSPDM_STATUS_SUCCESS;
+    case 0x22: {
+        spdm_certificate_large_response_t *spdm_response;
+        size_t spdm_response_size;
+        size_t transport_header_size;
+
+        if (!libspdm_read_responder_public_certificate_chain(
+                m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
+                &m_libspdm_local_certificate_chain,
+                &m_libspdm_local_certificate_chain_size, NULL, NULL)) {
+            assert_true(false);
+            return LIBSPDM_STATUS_RECEIVE_FAIL;
+        }
+
+        spdm_response_size = sizeof(spdm_certificate_large_response_t) +
+                             m_libspdm_local_certificate_chain_size;
+        transport_header_size = LIBSPDM_TEST_TRANSPORT_HEADER_SIZE;
+        spdm_response = (void *)((uint8_t *)*response + transport_header_size);
+
+        /* The whole certificate chain in one response. */
+        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_14;
+        spdm_response->header.request_response_code = SPDM_CERTIFICATE;
+        spdm_response->header.param1 = SPDM_CERTIFICATE_RESPONSE_LARGE_CERT_CHAIN;
+        spdm_response->header.param2 = 0;
+        spdm_response->portion_length = 0;
+        spdm_response->remainder_length = 0;
+        spdm_response->large_portion_length = (uint32_t)m_libspdm_local_certificate_chain_size;
+        spdm_response->large_remainder_length = 0;
+        libspdm_copy_mem(spdm_response + 1,
+                         (size_t)(*response) + *response_size - (size_t)(spdm_response + 1),
+                         m_libspdm_local_certificate_chain,
+                         m_libspdm_local_certificate_chain_size);
+
+        libspdm_transport_test_encode_message(spdm_context, NULL, false,
+                                              false, spdm_response_size,
+                                              spdm_response, response_size,
+                                              response);
+
+        free(m_libspdm_local_certificate_chain);
+        m_libspdm_local_certificate_chain = NULL;
+        m_libspdm_local_certificate_chain_size = 0;
     }
         return LIBSPDM_STATUS_SUCCESS;
     default:
@@ -3139,6 +3225,7 @@ static void req_get_certificate_case13(void **state)
     if (!libspdm_read_responder_public_certificate_chain_by_size(
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo, LIBSPDM_TEST_CERT_SMALL, &data,
             &data_size, &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
     if (!libspdm_x509_get_cert_from_cert_chain(
@@ -3278,6 +3365,7 @@ static void req_get_certificate_case15(void **state)
             /*MAXUINT16_CERT signature_algo is SHA256RSA */
             m_libspdm_use_hash_algo, SPDM_ALGORITHMS_BASE_ASYM_ALGO_TPM_ALG_RSASSA_2048,
             LIBSPDM_TEST_CERT_MAXUINT16, &data, &data_size, &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
     if (!libspdm_x509_get_cert_from_cert_chain(
@@ -3780,7 +3868,7 @@ static void req_get_certificate_case23(void **state)
     libspdm_dump_hex(m_libspdm_local_buffer, m_libspdm_local_buffer_size);
     assert_int_equal(spdm_context->transcript.message_b.buffer_size,
                      (arbitrary_size + m_libspdm_local_buffer_size));
-    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%x):\n",
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%zx):\n",
                    m_libspdm_local_buffer_size));
     libspdm_dump_hex(m_libspdm_local_buffer, m_libspdm_local_buffer_size);
     assert_memory_equal(spdm_context->transcript.message_b.buffer + arbitrary_size,
@@ -3846,9 +3934,12 @@ static void req_get_certificate_case24(void **state)
 /**
  * Test 25: Normal case, request a certificate chain
  * Expected Behavior: receives a valid certificate chain with the correct number of Certificate messages
+ * Skipped if LIBSPDM_MAX_ROOT_CERT_SUPPORT is less than 2, as the case provisions two root
+ * certificates.
  **/
 static void req_get_certificate_case25(void **state)
 {
+#if (LIBSPDM_MAX_ROOT_CERT_SUPPORT) >= 2
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -3905,6 +3996,7 @@ static void req_get_certificate_case25(void **state)
     if (!libspdm_read_responder_public_certificate_chain_per_slot(1, m_libspdm_use_hash_algo,
                                                                   m_libspdm_use_asym_algo, &data1,
                                                                   &data1_size, &hash1, &hash1_size)) {
+        assert_true(false);
         return;
     }
     libspdm_x509_get_cert_from_cert_chain((uint8_t *)data1 + sizeof(spdm_cert_chain_t) + hash1_size,
@@ -3920,7 +4012,7 @@ static void req_get_certificate_case25(void **state)
         cert_chain_size = sizeof(cert_chain);
         libspdm_zero_mem(cert_chain, sizeof(cert_chain));
         status = libspdm_get_certificate(spdm_context, NULL, slot_id, &cert_chain_size, cert_chain);
-        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "libspdm_get_certificate - %xu\n", status));
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "libspdm_get_certificate - %x\n", status));
         assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
     }
 
@@ -3932,21 +4024,29 @@ static void req_get_certificate_case25(void **state)
             spdm_context, NULL, slot_id,
             SPDM_CHALLENGE_REQUEST_NO_MEASUREMENT_SUMMARY_HASH,
             measurement_hash, NULL);
-        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "libspdm_challenge - %xu\n", status));
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "libspdm_challenge - %x\n", status));
         assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
     }
 
     free(data);
     free(data1);
+#else
+    skip();
+#endif
 }
 #endif /* LIBSPDM_SEND_CHALLENGE_SUPPORT */
 
 /**
  * Test 26: Normal case, request a certificate chain in a session
  * Expected Behavior: receives a valid certificate chain with the correct number of Certificate messages
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP and LIBSPDM_ENABLE_CAPABILITY_PSK_CAP are both
+ * disabled or LIBSPDM_AEAD_AES_256_GCM_SUPPORT is disabled, as the case runs in a session that
+ * uses AES-256-GCM.
  **/
 static void req_get_certificate_case26(void **state)
 {
+#if ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)) && \
+    (LIBSPDM_AEAD_AES_256_GCM_SUPPORT)
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -4023,6 +4123,9 @@ static void req_get_certificate_case26(void **state)
     assert_int_equal(session_info->session_transcript.message_m.buffer_size, 0);
 #endif
     free(data);
+#else
+    skip();
+#endif
 }
 
 /**
@@ -4115,6 +4218,7 @@ static void req_get_certificate_case28(void **state)
             m_libspdm_use_hash_algo,
             m_libspdm_use_asym_algo, &data,
             &data_size, &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
     if (!libspdm_x509_get_cert_from_cert_chain(
@@ -4177,6 +4281,7 @@ static void req_get_certificate_case29(void **state)
             m_libspdm_use_hash_algo,
             m_libspdm_use_asym_algo, &data,
             &data_size, &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
     if (!libspdm_x509_get_cert_from_cert_chain(
@@ -4522,6 +4627,71 @@ static void req_get_certificate_case33(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
+/**
+ * Test 34: The Responder supports LARGE_RESP_CAP in an SPDM 1.4 connection, and the Integrator asks
+ * for 0xFFFF bytes per CERTIFICATE response, which in SPDM 1.4 means the whole certificate chain.
+ * Expected Behavior: the request sets LargeCertChain with a LargeLength of 0xFFFFFFFF, and the
+ * certificate chain arrives and verifies in one CERTIFICATE response in the large format.
+ **/
+static void req_get_certificate_case34(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t cert_chain_size;
+    uint8_t cert_chain[LIBSPDM_MAX_CERT_CHAIN_SIZE];
+    void *data;
+    size_t data_size;
+    void *hash;
+    size_t hash_size;
+    const uint8_t *root_cert;
+    size_t root_cert_size;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x22;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_14 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AFTER_DIGESTS;
+    spdm_context->connection_info.capability.flags =
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CERT_CAP |
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_LARGE_RESP_CAP;
+    spdm_context->connection_info.multi_key_conn_rsp = false;
+    spdm_context->connection_info.peer_cert_info[0] = SPDM_CERTIFICATE_INFO_CERT_MODEL_NONE;
+    spdm_context->local_context.is_requester = true;
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert_true(false);
+        return;
+    }
+    if (!libspdm_x509_get_cert_from_cert_chain(
+            (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
+            data_size - sizeof(spdm_cert_chain_t) - hash_size, 0, &root_cert, &root_cert_size)) {
+        assert_true(false);
+        free(data);
+        return;
+    }
+    spdm_context->local_context.peer_root_cert_provision_size[0] = root_cert_size;
+    spdm_context->local_context.peer_root_cert_provision[0] = root_cert;
+    libspdm_reset_message_b(spdm_context);
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->connection_info.algorithm.req_base_asym_alg = m_libspdm_use_req_asym_algo;
+
+    cert_chain_size = sizeof(cert_chain);
+    libspdm_zero_mem(cert_chain, sizeof(cert_chain));
+    status = libspdm_get_certificate_ex(spdm_context, NULL, 0, SPDM_MAX_CERTIFICATE_CHAIN_SIZE,
+                                        &cert_chain_size, cert_chain, NULL, NULL);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(cert_chain_size, data_size);
+    assert_memory_equal(cert_chain, data, data_size);
+
+    spdm_context->local_context.peer_root_cert_provision_size[0] = 0;
+    spdm_context->local_context.peer_root_cert_provision[0] = NULL;
+    free(data);
+}
+
 int libspdm_req_get_certificate_test(void)
 {
     const struct CMUnitTest test_cases[] = {
@@ -4594,6 +4764,8 @@ int libspdm_req_get_certificate_test(void)
         cmocka_unit_test(req_get_certificate_case32),
         /* Fail response: get slot storage size, portion length not zero */
         cmocka_unit_test(req_get_certificate_case33),
+        /* SPDM 1.4 certificate chain in the large format */
+        cmocka_unit_test(req_get_certificate_case34),
     };
 
     libspdm_test_context_t test_context = {

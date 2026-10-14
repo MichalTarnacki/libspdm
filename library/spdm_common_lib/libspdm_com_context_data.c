@@ -156,10 +156,14 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
     uint32_t data32;
     libspdm_session_info_t *session_info;
     uint8_t slot_id;
-    uint8_t root_cert_index;
+#if LIBSPDM_CERT_PARSE_SUPPORT
+    size_t root_cert_index;
+#endif
     uint16_t data16;
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && LIBSPDM_CERT_PARSE_SUPPORT
     bool status;
+    uint32_t peer_base_asym_algo;
+    uint32_t peer_pqc_asym_algo;
 #endif
 
     if (spdm_context == NULL || data_type >= LIBSPDM_DATA_MAX) {
@@ -238,9 +242,9 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP) == 0);
             #endif /* !LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
 
-            #if !(LIBSPDM_ENABLE_CAPABILITY_MEL_CAP)
-            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEL_CAP) == 0);
-            #endif /* !LIBSPDM_ENABLE_CAPABILITY_MEL_CAP */
+            #if !(LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MUT_AUTH_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP */
 
             #if !(LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP)
             LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_KEY_EX_CAP) == 0);
@@ -250,9 +254,47 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PSK_CAP) == 0);
             #endif /* !LIBSPDM_ENABLE_CAPABILITY_PSK_CAP */
 
+            #if !(LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ENCAP_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HBEAT_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHUNK_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_SET_CERT_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_SET_CERT_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_SET_CERT_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_CSR_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CSR_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_CSR_CAP */
+
             #if !(LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP)
             LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP) == 0);
             #endif /* !LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_MEL_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEL_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_MEL_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP)
+            LIBSPDM_ASSERT((data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EVENT_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_GET_KEY_PAIR_INFO_CAP)
+            LIBSPDM_ASSERT(
+                (data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_GET_KEY_PAIR_INFO_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_GET_KEY_PAIR_INFO_CAP */
+
+            #if !(LIBSPDM_ENABLE_CAPABILITY_SET_KEY_PAIR_INFO_CAP)
+            LIBSPDM_ASSERT(
+                (data32 & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_SET_KEY_PAIR_INFO_CAP) == 0);
+            #endif /* !LIBSPDM_ENABLE_CAPABILITY_SET_KEY_PAIR_INFO_CAP */
 
             context->local_context.capability.flags = data32;
         } else if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
@@ -504,6 +546,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         }
         context->response_state = libspdm_read_uint32((const uint8_t *)data);
         break;
+#if LIBSPDM_CERT_PARSE_SUPPORT
     case LIBSPDM_DATA_PEER_PUBLIC_ROOT_CERT:
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
@@ -518,6 +561,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         context->local_context.peer_root_cert_provision_size[root_cert_index] = data_size;
         context->local_context.peer_root_cert_provision[root_cert_index] = data;
         break;
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
     case LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN:
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
@@ -607,16 +651,25 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         context->connection_info.peer_used_cert_chain[slot_id].buffer_hash_size =
             libspdm_get_hash_size(context->connection_info.algorithm.base_hash_algo);
 
-        if (context->connection_info.algorithm.pqc_asym_algo != 0) {
+        libspdm_free_peer_leaf_cert_public_key(context, slot_id);
+        if (context->local_context.is_requester) {
+            peer_base_asym_algo = context->connection_info.algorithm.base_asym_algo;
+            peer_pqc_asym_algo = context->connection_info.algorithm.pqc_asym_algo;
+        } else {
+            peer_base_asym_algo = context->connection_info.algorithm.req_base_asym_alg;
+            peer_pqc_asym_algo = context->connection_info.algorithm.req_pqc_asym_alg;
+        }
+
+        if (peer_pqc_asym_algo != 0) {
             status = libspdm_get_pqc_leaf_cert_public_key_from_cert_chain(
                 context->connection_info.algorithm.base_hash_algo,
-                context->connection_info.algorithm.pqc_asym_algo,
+                peer_pqc_asym_algo,
                 (uint8_t *)(size_t)data, data_size,
                 &context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key);
         } else {
             status = libspdm_get_leaf_cert_public_key_from_cert_chain(
                 context->connection_info.algorithm.base_hash_algo,
-                context->connection_info.algorithm.base_asym_algo,
+                peer_base_asym_algo,
                 (uint8_t *)(size_t)data, data_size,
                 &context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key);
         }
@@ -737,6 +790,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
         context->spdm_10_11_verify_signature_endian = *(const uint8_t*)data;
+        context->spdm_10_11_verify_signature_endian_setting = *(const uint8_t*)data;
         break;
     case LIBSPDM_DATA_SEQUENCE_NUMBER_ENDIAN:
         if (data_size != sizeof(uint8_t)) {
@@ -1174,7 +1228,7 @@ bool libspdm_check_context (void *spdm_context)
         SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12) {
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
                        "data_transfer_size must be greater than or equal "
-                       "to SPDM_MIN_DATA_TRANSFER_SIZE (%d).\n",
+                       "to SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12 (%d).\n",
                        SPDM_MIN_DATA_TRANSFER_SIZE_VERSION_12));
         return false;
     }
@@ -1225,9 +1279,24 @@ bool libspdm_check_context (void *spdm_context)
         }
     }
 
+    /* SPDM 1.0 has no provisioned public keys. */
+    if (!context->local_context.is_requester &&
+        ((context->local_context.capability.flags &
+          SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PUB_KEY_ID_CAP) != 0)) {
+        for (index = 0; index < context->local_context.version.spdm_version_count; index++) {
+            if (libspdm_get_version_from_version_number(
+                    context->local_context.version.spdm_version[index]) ==
+                SPDM_MESSAGE_VERSION_10) {
+                LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR,
+                               "A Responder with PUB_KEY_ID_CAP cannot support SPDM 1.0.\n"));
+                return false;
+            }
+        }
+    }
+
     return true;
 }
-#endif /* LIBSPDM_CHECK_CONTEXT */
+#endif /* LIBSPDM_CHECK_SPDM_CONTEXT */
 
 void libspdm_reset_message_a(libspdm_context_t *spdm_context)
 {
@@ -1891,7 +1960,7 @@ libspdm_return_t libspdm_append_message_k(libspdm_context_t *spdm_context,
         message_size);
 #else
     {
-        uint8_t *cert_chain_buffer;
+        const uint8_t *cert_chain_buffer;
         size_t cert_chain_buffer_size;
         bool result;
         uint8_t cert_chain_buffer_hash[LIBSPDM_MAX_HASH_SIZE];
@@ -2658,12 +2727,9 @@ void libspdm_get_scratch_buffer (
     LIBSPDM_ASSERT (context->scratch_buffer_size >=
                     libspdm_get_scratch_buffer_capacity(spdm_context));
     *scratch_buffer = context->scratch_buffer;
-    *scratch_buffer_size = context->scratch_buffer_size;
-    /* need to remove last 2 sections, because they are for libspdm internal state track. */
-    *scratch_buffer_size -= libspdm_get_scratch_buffer_last_spdm_request_capacity(spdm_context);
-#if LIBSPDM_RESPOND_IF_READY_SUPPORT
-    *scratch_buffer_size -= libspdm_get_scratch_buffer_cache_spdm_request_capacity(spdm_context);
-#endif
+    /* The sections for libspdm's internal state start at a fixed offset, so the returned space ends
+     * there even if the scratch buffer is larger than required. */
+    *scratch_buffer_size = libspdm_get_scratch_buffer_last_spdm_request_offset(spdm_context);
 }
 
 libspdm_return_t libspdm_acquire_sender_buffer (
@@ -2778,7 +2844,7 @@ libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context,
 
     context = fips_selftest_context;
 
-    /*No tested for every used algo*/
+    /*Not tested for every used algo*/
     context->tested_algo = 0;
     /*self_test result is false for every used algo*/
     context->self_test_result = 0;
@@ -2962,20 +3028,30 @@ libspdm_return_t libspdm_init_context(void *spdm_context)
                                                      LIBSPDM_MAX_SESSION_COUNT);
 }
 
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+static void libspdm_reset_chunk_info(libspdm_chunk_info_t *chunk_info)
+{
+    if (chunk_info->large_message != NULL) {
+        libspdm_zero_mem(chunk_info->large_message, chunk_info->large_message_capacity);
+    }
+    chunk_info->chunk_in_use = false;
+    chunk_info->chunk_seq_no = 0;
+    chunk_info->chunk_bytes_transferred = 0;
+    chunk_info->large_message = NULL;
+    chunk_info->large_message_size = 0;
+    chunk_info->large_message_capacity = 0;
+}
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
 void libspdm_reset_context(void *spdm_context)
 {
     libspdm_context_t *context;
     size_t index;
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
-    void *pubkey_context;
-    bool is_requester;
     uint8_t slot_index;
 #endif
 
     context = spdm_context;
-#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
-    is_requester = context->local_context.is_requester;
-#endif
 
     /* Clear all information about previous connection. Local context information is preserved. */
 
@@ -3006,31 +3082,10 @@ void libspdm_reset_context(void *spdm_context)
      * below, and these contexts are otherwise only released in
      * libspdm_deinit_context, so they leak across every re-connection. */
     for (slot_index = 0; slot_index < SPDM_MAX_SLOT_COUNT; slot_index++) {
-        pubkey_context = context->connection_info.peer_used_cert_chain[slot_index].
-                         leaf_cert_public_key;
-
-        if (pubkey_context != NULL) {
-            if (is_requester) {
-                if (context->connection_info.algorithm.pqc_asym_algo != 0) {
-                    libspdm_pqc_asym_free(
-                        context->connection_info.algorithm.pqc_asym_algo, pubkey_context);
-                } else {
-                    libspdm_asym_free(
-                        context->connection_info.algorithm.base_asym_algo, pubkey_context);
-                }
-            } else {
-                if (context->connection_info.algorithm.req_pqc_asym_alg != 0) {
-                    libspdm_req_pqc_asym_free(
-                        context->connection_info.algorithm.req_pqc_asym_alg, pubkey_context);
-                } else {
-                    libspdm_req_asym_free(
-                        context->connection_info.algorithm.req_base_asym_alg, pubkey_context);
-                }
-            }
-
-            context->connection_info.peer_used_cert_chain[slot_index].leaf_cert_public_key = NULL;
-        }
+        libspdm_free_peer_leaf_cert_public_key(context, slot_index);
     }
+    libspdm_zero_mem(context->connection_info.peer_used_cert_chain,
+                     sizeof(context->connection_info.peer_used_cert_chain));
 #endif
 
     context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_NOT_STARTED;
@@ -3042,6 +3097,10 @@ void libspdm_reset_context(void *spdm_context)
 #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
     libspdm_zero_mem(&context->encap_context, sizeof(libspdm_encap_context_t));
 #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+#if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+    libspdm_reset_chunk_info(&context->chunk_context.get);
+    libspdm_reset_chunk_info(&context->chunk_context.send);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
     context->connection_info.multi_key_conn_req = false;
     context->connection_info.multi_key_conn_rsp = false;
 #if LIBSPDM_RESPOND_IF_READY_SUPPORT
@@ -3058,6 +3117,8 @@ void libspdm_reset_context(void *spdm_context)
 #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
     context->current_dhe_session_count = 0;
     context->current_psk_session_count = 0;
+    context->spdm_10_11_verify_signature_endian =
+        context->spdm_10_11_verify_signature_endian_setting;
 }
 
 void libspdm_deinit_context(void *spdm_context)
@@ -3066,41 +3127,14 @@ void libspdm_deinit_context(void *spdm_context)
     libspdm_context_t *context;
     libspdm_session_info_t *session_info;
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
-    void *pubkey_context;
-    bool is_requester;
     uint8_t slot_index;
 #endif
 
     context = spdm_context;
 
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
-    is_requester = context->local_context.is_requester;
-
     for (slot_index = 0; slot_index < SPDM_MAX_SLOT_COUNT; slot_index++) {
-        pubkey_context = context->connection_info.peer_used_cert_chain[slot_index].
-                         leaf_cert_public_key;
-
-        if (pubkey_context != NULL) {
-            if (is_requester) {
-                if (context->connection_info.algorithm.pqc_asym_algo != 0) {
-                    libspdm_pqc_asym_free(
-                        context->connection_info.algorithm.pqc_asym_algo, pubkey_context);
-                } else {
-                    libspdm_asym_free(
-                        context->connection_info.algorithm.base_asym_algo, pubkey_context);
-                }
-            } else {
-                if (context->connection_info.algorithm.req_pqc_asym_alg != 0) {
-                    libspdm_req_pqc_asym_free(
-                        context->connection_info.algorithm.req_pqc_asym_alg, pubkey_context);
-                } else {
-                    libspdm_req_asym_free(
-                        context->connection_info.algorithm.req_base_asym_alg, pubkey_context);
-                }
-            }
-
-            context->connection_info.peer_used_cert_chain[slot_index].leaf_cert_public_key = NULL;
-        }
+        libspdm_free_peer_leaf_cert_public_key(context, slot_index);
     }
 #endif
 
@@ -3155,17 +3189,17 @@ void libspdm_version_number_sort(spdm_version_number_t *ver_set, size_t ver_num)
     size_t index_max;
     spdm_version_number_t version;
 
-    /* Select sort */
+    /* Selection sort */
     if (ver_num > 1) {
         for (index_sort = 0; index_sort < ver_num; index_sort++) {
             index_max = index_sort;
             for (index = index_sort + 1; index < ver_num; index++) {
-                /* if ver_ser[index] higher than ver_set[index_max] */
+                /* if ver_set[index] higher than ver_set[index_max] */
                 if (ver_set[index] > ver_set[index_max]) {
                     index_max = index;
                 }
             }
-            /* swap ver_ser[index_min] and ver_set[index_sort] */
+            /* swap ver_set[index_max] and ver_set[index_sort] */
             version = ver_set[index_sort];
             ver_set[index_sort] = ver_set[index_max];
             ver_set[index_max] = version;

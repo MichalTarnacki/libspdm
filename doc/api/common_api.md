@@ -85,6 +85,8 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
     - `LIBSPDM_DATA_LOCATION_LOCAL`
         - The SPDM version(s) of the local endpoint.
         - Can contain multiple entries.
+        - A Responder whose capabilities include `PUB_KEY_ID_CAP` cannot include SPDM 1.0, which has
+          no provisioned public keys.
 - `LIBSPDM_DATA_CAPABILITY_FLAGS`
     - The SPDM capabilities of an endpoint. These are communicated through the `GET_CAPABILITIES /
       CAPABILITIES` messages. This is a bitmask whose fields are defined through the
@@ -228,7 +230,8 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
     - Allows multiple pointers to root certificates to be stored in the `spdm_context`. These root
       certificates are then either compared against the root certificate returned by a peer
       endpoint, or appended to the partial (without root certificate) certificate chain returned by
-      a peer endpoint. The root certificate(s) must be encoded as ASN.1 DER.
+      a peer endpoint. The root certificate(s) must be encoded as ASN.1 DER. Only available when
+      `LIBSPDM_CERT_PARSE_SUPPORT` is enabled.
 - `LIBSPDM_DATA_LOCAL_PUBLIC_CERT_CHAIN`
     - Allows multiple pointers to SPDM certificate chains to be stored in slots through the
       `additional_data` field. An SPDM certificate chain can then be returned through a
@@ -269,13 +272,15 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
       the endpoints support `CACHE_CAP`.
 - `LIBSPDM_DATA_IS_REQUESTER`
     - Specifies if the local endpoint is a Requester (true) or Responder (false).
+    - libspdm sets it when the connection starts, with `GET_VERSION` or `VERSION`.
 - `LIBSPDM_DATA_APP_CONTEXT_DATA`
     - Is used to hold a pointer to Integrator-defined data that is tied to the `spdm_context`. Via
       this mechanism an Integrator can extend the `spdm_context`.
 - `LIBSPDM_DATA_HEARTBEAT_PERIOD`
     - Specifies the Responder's `HeartbeatPeriod` in units of seconds. This value is communicated to
       the Requester in the `KEY_EXCHANGE_RSP` and `PSK_EXCHANGE_RSP` messages. The actual timeout
-      limit is twice the `HeartbeatPeriod`.
+      limit is twice the `HeartbeatPeriod`. If `LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP` is disabled
+      then the Responder sends a `HeartbeatPeriod` of 0 instead.
 - `LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER`
     - Specifies the number of messages that can encrypted or decrypted before an error is returned
       to the Integrator. The sequence number used to track these messages is 64 bits and the

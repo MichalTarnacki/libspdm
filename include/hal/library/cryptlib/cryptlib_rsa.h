@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -21,7 +21,7 @@ typedef enum {
     LIBSPDM_RSA_KEY_E, /*< RSA public exponent (e)*/
     LIBSPDM_RSA_KEY_D, /*< RSA Private exponent (d)*/
     LIBSPDM_RSA_KEY_P, /*< RSA secret prime factor of Modulus (p)*/
-    LIBSPDM_RSA_KEY_Q, /*< RSA secret prime factor of Modules (q)*/
+    LIBSPDM_RSA_KEY_Q, /*< RSA secret prime factor of Modulus (q)*/
     LIBSPDM_RSA_KEY_DP, /*< p's CRT exponent (== d mod (p - 1))*/
     LIBSPDM_RSA_KEY_DQ, /*< q's CRT exponent (== d mod (q - 1))*/
     LIBSPDM_RSA_KEY_Q_INV /*< The CRT coefficient (== 1/q mod p)*/
@@ -163,7 +163,7 @@ extern bool libspdm_rsa_pkcs1_verify_with_nid(void *rsa_context, size_t hash_nid
  *
  * If rsa_context is NULL, then return false.
  * If message_hash is NULL, then return false.
- * If hash_size need match the hash_nid. nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384,
+ * If hash_size need match the hash_nid. hash_nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384,
  * SHA3_512.
  * If sig_size is large enough but signature is NULL, then return false.
  *
@@ -192,7 +192,7 @@ extern bool libspdm_rsa_pss_sign(void *rsa_context, size_t hash_nid,
  * If rsa_context is NULL, then return false.
  * If message_hash is NULL, then return false.
  * If signature is NULL, then return false.
- * If hash_size need match the hash_nid. nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384,
+ * If hash_size need match the hash_nid. hash_nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384,
  * SHA3_512.
  *
  * @param[in]  rsa_context   Pointer to RSA context for signature verification.
@@ -223,7 +223,7 @@ extern bool libspdm_rsa_pss_verify(void *rsa_context, size_t hash_nid,
  *
  * If rsa_context is NULL, then return false.
  * If message_hash is NULL, then return false.
- * If hash_size need match the hash_nid. nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384, SHA3_512.
+ * If hash_size need match the hash_nid. hash_nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384, SHA3_512.
  * If sig_size is large enough but signature is NULL, then return false.
  *
  * @param[in]       rsa_context   Pointer to RSA context for signature generation.
@@ -252,7 +252,7 @@ extern bool libspdm_rsa_pss_sign_fips(void *rsa_context, size_t hash_nid,
  * If rsa_context is NULL, then return false.
  * If message_hash is NULL, then return false.
  * If signature is NULL, then return false.
- * If hash_size need match the hash_nid. nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384, SHA3_512.
+ * If hash_size need match the hash_nid. hash_nid could be SHA256, SHA384, SHA512, SHA3_256, SHA3_384, SHA3_512.
  *
  * @param[in]  rsa_context   Pointer to RSA context for signature verification.
  * @param[in]  hash_nid      hash NID

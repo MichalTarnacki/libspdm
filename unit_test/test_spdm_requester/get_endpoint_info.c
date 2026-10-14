@@ -674,6 +674,7 @@ static void req_get_endpoint_info_case1(void **state)
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.base_asym_algo,
@@ -767,6 +768,7 @@ static void req_get_endpoint_info_case2(void **state)
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.base_asym_algo,
@@ -860,6 +862,7 @@ static void req_get_endpoint_info_case3(void **state)
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.base_asym_algo,
@@ -937,6 +940,7 @@ static void req_get_endpoint_info_case4(void **state)
     if (!libspdm_read_responder_public_certificate_chain_per_slot(1, m_libspdm_use_hash_algo,
                                                                   m_libspdm_use_asym_algo, &data,
                                                                   &data_size, &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
     libspdm_reset_message_a(spdm_context);
@@ -957,6 +961,7 @@ static void req_get_endpoint_info_case4(void **state)
         spdm_context->connection_info.peer_used_cert_chain[1].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[1].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 1);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.base_asym_algo,
@@ -1027,6 +1032,7 @@ static void req_get_endpoint_info_case5(void **state)
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PUB_KEY_ID_CAP;
     if (!libspdm_read_responder_public_key(m_libspdm_use_asym_algo, &data, &data_size)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.peer_public_key_provision = data;
@@ -1109,9 +1115,14 @@ static void req_get_endpoint_info_case6(void **state)
 /**
  * Test 7: Successful response to get a session based endpoint info with signature
  * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code, with an empty session_transcript.message_e
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP and LIBSPDM_ENABLE_CAPABILITY_PSK_CAP are both
+ * disabled or LIBSPDM_AEAD_AES_256_GCM_SUPPORT is disabled, as the case runs in a session that
+ * uses AES-256-GCM.
  **/
 static void req_get_endpoint_info_case7(void **state)
 {
+#if ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)) && \
+    (LIBSPDM_AEAD_AES_256_GCM_SUPPORT)
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -1182,6 +1193,7 @@ static void req_get_endpoint_info_case7(void **state)
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.base_asym_algo,
@@ -1217,6 +1229,9 @@ static void req_get_endpoint_info_case7(void **state)
     assert_null(session_info->session_transcript.digest_context_il1il2);
 #endif
     free(data);
+#else
+    skip();
+#endif
 }
 
 int libspdm_req_get_endpoint_info_test(void)

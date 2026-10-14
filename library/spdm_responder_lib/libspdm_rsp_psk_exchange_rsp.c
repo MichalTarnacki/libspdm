@@ -169,7 +169,7 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
     }
 
     {
-        /* Double check if algorithm has been provisioned, because ALGORITHM might be skipped.*/
+        /* Double check if algorithm has been provisioned, because NEGOTIATE_ALGORITHMS might be skipped.*/
         if (libspdm_is_capabilities_flag_supported(
                 spdm_context, true, 0,
                 SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP)) {
@@ -236,6 +236,11 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
                                                SPDM_ERROR_CODE_INVALID_REQUEST, 0,
                                                response_size, response);
     }
+    if (spdm_request->opaque_length > SPDM_MAX_OPAQUE_DATA_SIZE) {
+        return libspdm_generate_error_response(spdm_context,
+                                               SPDM_ERROR_CODE_INVALID_REQUEST, 0,
+                                               response_size, response);
+    }
     if (request_size < sizeof(spdm_psk_exchange_request_t) +
         spdm_request->psk_hint_length +
         spdm_request->context_length +
@@ -277,7 +282,7 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
                           spdm_request->psk_hint_length + spdm_request->context_length;
 
         /*
-         * Here allows integrator generate own opaque data for Key Exchange Response.
+         * Here allows integrator generate own opaque data for PSK Exchange Response.
          * If libspdm_psk_exchange_rsp_opaque_data() returns false,
          * libspdm will generate version selection opaque data.
          */
@@ -368,12 +373,15 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
 
     spdm_response->header.spdm_version = spdm_request->header.spdm_version;
     spdm_response->header.request_response_code = SPDM_PSK_EXCHANGE_RSP;
+    #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
     if (libspdm_is_capabilities_flag_supported(
             spdm_context, false,
             SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HBEAT_CAP,
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HBEAT_CAP)) {
         spdm_response->header.param1 = spdm_context->local_context.heartbeat_period;
-    } else {
+    } else
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+    {
         spdm_response->header.param1 = 0x00;
     }
 
@@ -579,12 +587,15 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
         libspdm_set_session_state(spdm_context, session_id, LIBSPDM_SESSION_STATE_ESTABLISHED);
     }
 
+    #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
     if (libspdm_is_capabilities_flag_supported(
             spdm_context, false,
             SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HBEAT_CAP,
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_HBEAT_CAP)) {
         session_info->heartbeat_period = spdm_context->local_context.heartbeat_period;
-    } else {
+    } else
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
+    {
         session_info->heartbeat_period = 0x00;
     }
 

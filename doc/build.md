@@ -9,17 +9,15 @@
 a) [ARM Development Studio 2022](https://developer.arm.com/downloads/-/arm-development-studio-downloads) for ARM/AARCH64.
   - Install [MSYS2](https://www.msys2.org/).
   - Install ARM DS2022. Change the default installation path C:\ArmStudio.
-  - Launch MSYS2 -> MSYS2 MINGW64.
-  - Install cmake and make, with `pacman -S mingw-w64-x86_64-cmake` and `pacman -S make`.
+  - Launch MSYS2 -> MSYS2 UCRT64.
+  - Install cmake and make, with `pacman -S mingw-w64-ucrt-x86_64-cmake` and `pacman -S make`.
   - Setup build environment
       ```bash
       export PATH=$PATH:/c/ArmStudio/sw/ARMCompiler6.18/bin
-      export CC=/c/ArmStudio/sw/ARMCompiler6.18/bin/armclang.exe
       export ARM_PRODUCT_DEF=/c/ArmStudio/sw/mappings/gold.elmap
       export ARMLMD_LICENSE_FILE=<license file>
       ```
   - Apply below work around for Windows ARM DS2022 build
-    - Add set(CMAKE_SYSTEM_ARCH "armv8-a") on the top of `C:\msys64\mingw64\share\cmake\Modules\Compiler\ARMClang.cmake`. The CMAKE_SYSTEM_ARCH is the target arch.
     - Change `set(libs ${libs} ws2_32)` to `#set(libs ${libs} ws2_32)` in `libspdm\os_stub\mbedtlslib\mbedtls\library\CMakeLists.txt`. ws2_32 is the socket lib, and the armclang does not support it.
   - Implement the TBD features. `libspdm_sleep` and `libspdm_get_random_number_64` need to be implemented before it can run on a real system.
 
@@ -29,6 +27,7 @@ a) [ARM Development Studio 2022](https://developer.arm.com/downloads/-/arm-devel
 
 a) [ARM Development Studio 2022](https://developer.arm.com/downloads/-/arm-development-studio-downloads) for ARM/AARCH64.
   - Follow the [Arm Development Studio Getting Started Guide](https://developer.arm.com/documentation/101469/2022-1/Installing-and-configuring-Arm-Development-Studio/Installing-on-Linux) to install Linux version.
+  - Install CMake 3.19 or later.
   - Setup build environment
       ```bash
       echo 'export PATH=$PATH:/opt/arm/developmentstudio-2022.1/sw/ARMCompiler6.18/bin' | sudo tee -a ~/.bashrc
@@ -154,7 +153,7 @@ a) [LOONGARCH64_GNU](https://github.com/loongson/build-tools/)
 
 ### Windows Builds for ARM/AARCH64
 
-   For ARM DS2022 build (arm or aarch64) on Windows, Launch `MSYS2 -> MSYS2 MINGW64` command prompt.
+   For ARM DS2022 build (arm or aarch64) on Windows, Launch `MSYS2 -> MSYS2 UCRT64` command prompt.
    ```bash
    cd libspdm
    mkdir build

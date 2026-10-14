@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2026 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -18,7 +18,7 @@
  * @param nid cipher NID
  *
  * @return  Pointer to the Shang-Mi2 context that has been initialized.
- *          If the allocations fails, sm2_new_by_nid() returns NULL.
+ *          If the allocation fails, libspdm_sm2_dsa_new_by_nid() returns NULL.
  **/
 extern void *libspdm_sm2_dsa_new_by_nid(size_t nid);
 
@@ -32,7 +32,7 @@ extern void *libspdm_sm2_dsa_new_by_nid(size_t nid);
  * @param[in]  der_size    Size of the DER-encoded public key data in bytes.
  * @param[out] sm2_context Pointer to newly generated SM2 context which contains the
  *                         SM2 public key component.
- *                         Use libspdm_sm2_free() function to free the resource.
+ *                         Use libspdm_sm2_dsa_free() function to free the resource.
  *
  * If der_data is NULL, then return false.
  * If sm2_context is NULL, then return false.
@@ -123,7 +123,7 @@ extern bool libspdm_sm2_dsa_verify(const void *sm2_context, size_t hash_nid,
  * @param nid cipher NID
  *
  * @return  Pointer to the Shang-Mi2 context that has been initialized.
- *          If the allocations fails, sm2_new_by_nid() returns NULL.
+ *          If the allocation fails, libspdm_sm2_key_exchange_new_by_nid() returns NULL.
  **/
 extern void *libspdm_sm2_key_exchange_new_by_nid(size_t nid);
 
@@ -138,7 +138,7 @@ extern void libspdm_sm2_key_exchange_free(void *sm2_context);
 /**
  * Initialize the specified sm2 context.
  *
- * @param[in]  sm2_context   Pointer to the sm2 context to be released.
+ * @param[in]  sm2_context   Pointer to the sm2 context to be initialized.
  * @param[in]  hash_nid      hash NID, only SM3 is valid.
  * @param[in]  id_a          The ID-A of the key exchange context.
  * @param[in]  id_a_size     Size of ID-A key exchange context.
@@ -158,9 +158,9 @@ extern bool libspdm_sm2_key_exchange_init(const void *sm2_context, size_t hash_n
  * Generates sm2 key and returns sm2 public key (X, Y), based upon GB/T 32918.3-2016: SM2 - Part3.
  *
  * This function generates random secret, and computes the public key (X, Y), which is
- * returned via parameter public, public_size.
- * X is the first half of public with size being public_size / 2,
- * Y is the second half of public with size being public_size / 2.
+ * returned via parameter public_data, public_size.
+ * X is the first half of public_data with size being public_size / 2,
+ * Y is the second half of public_data with size being public_size / 2.
  * sm2 context is updated accordingly.
  * If the public buffer is too small to hold the public X, Y, false is returned and
  * public_size is set to the required buffer size to obtain the public X, Y.
@@ -169,7 +169,7 @@ extern bool libspdm_sm2_key_exchange_init(const void *sm2_context, size_t hash_n
  *
  * If sm2_context is NULL, then return false.
  * If public_size is NULL, then return false.
- * If public_size is large enough but public is NULL, then return false.
+ * If public_size is large enough but public_data is NULL, then return false.
  *
  * @param[in, out]  sm2_context  Pointer to the sm2 context.
  * @param[out]      public_data  Pointer to the buffer to receive generated public X,Y.

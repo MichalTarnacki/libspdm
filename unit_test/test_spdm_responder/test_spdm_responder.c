@@ -54,17 +54,22 @@ int libspdm_rsp_respond_if_ready_test (void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
 int libspdm_rsp_key_exchange_rsp_test(void);
+int libspdm_rsp_key_exchange_rsp_error_test(void);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP*/
 
 int libspdm_rsp_finish_rsp_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
 int libspdm_rsp_psk_exchange_rsp_test(void);
+int libspdm_rsp_psk_exchange_rsp_error_test(void);
 int libspdm_rsp_psk_finish_rsp_test(void);
+int libspdm_rsp_psk_finish_rsp_error_test(void);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP */
 
 #if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+#if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
 int libspdm_rsp_heartbeat_ack_test(void);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
 int libspdm_rsp_key_update_ack_test(void);
 int libspdm_rsp_end_session_ack_test(void);
 #endif /* (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP) */
@@ -100,6 +105,8 @@ int libspdm_rsp_chunk_response_test(void);
 int libspdm_rsp_receive_send_test(void);
 int libspdm_rsp_chunk_send_ack_test(void);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+int libspdm_rsp_receive_send_error_test(void);
+int libspdm_rsp_communication_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP
 int libspdm_rsp_supported_event_types_test(void);
@@ -205,6 +212,9 @@ int main(void)
     if (libspdm_rsp_key_exchange_rsp_test() != 0) {
         return_value = 1;
     }
+    if (libspdm_rsp_key_exchange_rsp_error_test() != 0) {
+        return_value = 1;
+    }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
@@ -217,18 +227,26 @@ int main(void)
     if (libspdm_rsp_psk_exchange_rsp_test() != 0) {
         return_value = 1;
     }
+    if (libspdm_rsp_psk_exchange_rsp_error_test() != 0) {
+        return_value = 1;
+    }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
     if (libspdm_rsp_psk_finish_rsp_test() != 0) {
         return_value = 1;
     }
+    if (libspdm_rsp_psk_finish_rsp_error_test() != 0) {
+        return_value = 1;
+    }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP*/
 
     #if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+    #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
     if (libspdm_rsp_heartbeat_ack_test() != 0) {
         return_value = 1;
     }
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
     if (libspdm_rsp_key_update_ack_test() != 0) {
         return_value = 1;
     }
@@ -305,6 +323,14 @@ int main(void)
         return_value = 1;
     }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
+    if (libspdm_rsp_receive_send_error_test() != 0) {
+        return_value = 1;
+    }
+
+    if (libspdm_rsp_communication_test() != 0) {
+        return_value = 1;
+    }
 
     #if LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP
     if (libspdm_rsp_supported_event_types_test() != 0) {

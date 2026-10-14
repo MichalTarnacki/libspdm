@@ -13,11 +13,13 @@ int libspdm_req_get_capabilities_test(void);
 int libspdm_req_get_capabilities_error_test(void);
 int libspdm_req_negotiate_algorithms_test(void);
 int libspdm_req_negotiate_algorithms_error_test(void);
+int libspdm_req_communication_test(void);
 
 #if LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT
 int libspdm_req_get_digests_test(void);
 int libspdm_req_get_digests_error_test(void);
 int libspdm_req_get_certificate_test(void);
+int libspdm_req_get_certificate_error_test(void);
 #endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
 
 #if LIBSPDM_SEND_CHALLENGE_SUPPORT
@@ -31,6 +33,7 @@ int libspdm_req_get_measurements_error_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_MEL_CAP
 int libspdm_req_get_measurement_extension_log_test(void);
+int libspdm_req_get_measurement_extension_log_error_test(void);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MEL_CAP*/
 
 #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
@@ -41,17 +44,21 @@ int libspdm_req_finish_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
 int libspdm_req_psk_exchange_test(void);
+int libspdm_req_psk_exchange_error_test(void);
 int libspdm_req_psk_finish_test(void);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP*/
 
 #if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+#if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
 int libspdm_req_heartbeat_test(void);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
 int libspdm_req_key_update_test(void);
 int libspdm_req_end_session_test(void);
 #endif /* (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP) */
 
 #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
 int libspdm_req_get_encapsulated_request_test(void);
+int libspdm_req_get_encapsulated_request_error_test(void);
 #if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
 #if LIBSPDM_ENABLE_CAPABILITY_CERT_CAP
 int libspdm_req_encap_digests_test(void);
@@ -83,6 +90,7 @@ int libspdm_req_encap_endpoint_info_error_test(void);
 
 int libspdm_req_set_certificate_test(void);
 int libspdm_req_get_csr_test(void);
+int libspdm_req_get_csr_error_test(void);
 
 #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
 int libspdm_req_chunk_get_test(void);
@@ -151,6 +159,9 @@ int main(void)
     if (libspdm_req_get_certificate_test() != 0) {
         return_value = 1;
     }
+    if (libspdm_req_get_certificate_error_test() != 0) {
+        return_value = 1;
+    }
     #endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
 
     #if LIBSPDM_SEND_CHALLENGE_SUPPORT
@@ -170,6 +181,9 @@ int main(void)
 
     #if LIBSPDM_ENABLE_CAPABILITY_MEL_CAP
     if (libspdm_req_get_measurement_extension_log_test() != 0) {
+        return_value = 1;
+    }
+    if (libspdm_req_get_measurement_extension_log_error_test() != 0) {
         return_value = 1;
     }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_MEL_CAP */
@@ -193,6 +207,9 @@ int main(void)
     if (libspdm_req_psk_exchange_test() != 0) {
         return_value = 1;
     }
+    if (libspdm_req_psk_exchange_error_test() != 0) {
+        return_value = 1;
+    }
     #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
@@ -202,9 +219,11 @@ int main(void)
     #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP*/
 
     #if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+    #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
     if (libspdm_req_heartbeat_test() != 0) {
         return_value = 1;
     }
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
     if (libspdm_req_key_update_test() != 0) {
         return_value = 1;
     }
@@ -224,6 +243,9 @@ int main(void)
 
     #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
     if (libspdm_req_get_encapsulated_request_test() != 0) {
+        return_value = 1;
+    }
+    if (libspdm_req_get_encapsulated_request_error_test() != 0) {
         return_value = 1;
     }
     #if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
@@ -296,6 +318,9 @@ int main(void)
     if (libspdm_req_get_csr_test() != 0) {
         return_value = 1;
     }
+    if (libspdm_req_get_csr_error_test() != 0) {
+        return_value = 1;
+    }
     #endif /*LIBSPDM_ENABLE_CAPABILITY_CSR_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
@@ -348,6 +373,10 @@ int main(void)
         return_value = 1;
     }
     #endif /* LIBSPDM_ENABLE_VENDOR_DEFINED_MESSAGES */
+
+    if (libspdm_req_communication_test() != 0) {
+        return_value = 1;
+    }
 
     return return_value;
 }

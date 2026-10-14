@@ -84,6 +84,10 @@ static uint8_t m_libspdm_local_buffer[LIBSPDM_MAX_MESSAGE_VCA_BUFFER_SIZE];
 
 static uint8_t m_connection_other_params_support;
 
+/* BaseAsymSel and BaseHashSel of the ALGORITHMS response for case 0x2B. */
+static uint32_t m_ep_info_base_asym_sel;
+static uint32_t m_ep_info_base_hash_sel;
+
 static uint8_t m_mel_specification_sel;
 
 static uint8_t m_measurement_specification_sel;
@@ -188,6 +192,7 @@ static libspdm_return_t send_message(
     case 0x23:
     case 0x24:
     case 0x25:
+    case 0x2B:
         return LIBSPDM_STATUS_SUCCESS;
     case 0x27:
     case 0x28: {
@@ -1617,6 +1622,29 @@ static libspdm_return_t receive_message(
     }
         return LIBSPDM_STATUS_SUCCESS;
 
+    case 0x2B: {
+        /* SPDM 1.3 ALGORITHMS whose hash and signing algorithms come from the test. */
+        spdm_algorithms_response_t *spdm_response;
+        size_t spdm_response_size;
+        size_t transport_header_size;
+
+        spdm_response_size = sizeof(spdm_algorithms_response_t);
+        transport_header_size = LIBSPDM_TEST_TRANSPORT_HEADER_SIZE;
+        spdm_response = (void *)((uint8_t *)*response + transport_header_size);
+
+        libspdm_zero_mem(spdm_response, spdm_response_size);
+        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_13;
+        spdm_response->header.request_response_code = SPDM_ALGORITHMS;
+        spdm_response->length = (uint16_t)spdm_response_size;
+        spdm_response->base_asym_sel = m_ep_info_base_asym_sel;
+        spdm_response->base_hash_sel = m_ep_info_base_hash_sel;
+
+        libspdm_transport_test_encode_message(spdm_context, NULL, false, false,
+                                              spdm_response_size, spdm_response,
+                                              response_size, response);
+    }
+        return LIBSPDM_STATUS_SUCCESS;
+
     default:
         return LIBSPDM_STATUS_RECEIVE_FAIL;
     }
@@ -2225,8 +2253,15 @@ static void req_negotiate_algorithms_case21(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
+/**
+ * Test 22: SPDM 1.1 ALGORITHMS when both sides set KEY_EX_CAP, ENCRYPT_CAP, MAC_CAP, MUT_AUTH_CAP
+ * and PSK_CAP.
+ * Expected behavior: returns LIBSPDM_STATUS_SUCCESS.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
+ **/
 static void req_negotiate_algorithms_case22(void **state)
 {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -2259,10 +2294,20 @@ static void req_negotiate_algorithms_case22(void **state)
 
     status = libspdm_negotiate_algorithms(spdm_context);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+#else
+    skip();
+#endif
 }
 
+/**
+ * Test 23: as test 22, with the Responder also setting MEAS_CAP.
+ * Expected behavior: returns LIBSPDM_STATUS_SUCCESS; with LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT,
+ * message A holds the request and response.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
+ **/
 static void req_negotiate_algorithms_case23(void **state)
 {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -2312,6 +2357,9 @@ static void req_negotiate_algorithms_case23(void **state)
                       sizeof(spdm_negotiate_algorithms_request_t) + 4*
                       sizeof(spdm_negotiate_algorithms_common_struct_table_t) +
                       sizeof(libspdm_algorithms_response_spdm11_t));
+#endif
+#else
+    skip();
 #endif
 }
 
@@ -2518,7 +2566,14 @@ static void req_negotiate_algorithms_case31(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
+/**
+ * Test 32: as test 23, with message A already holding data.
+ * Expected behavior: returns LIBSPDM_STATUS_SUCCESS; with LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT,
+ * the request and response are appended to message A.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
+ **/
 static void req_negotiate_algorithms_case32(void **state) {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -2576,15 +2631,26 @@ static void req_negotiate_algorithms_case32(void **state) {
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal (spdm_context->transcript.message_a.buffer_size,
                       arbitrary_size + m_libspdm_local_buffer_size);
-    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%x):\n",
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "m_libspdm_local_buffer (0x%zx):\n",
                    m_libspdm_local_buffer_size));
     libspdm_dump_hex(m_libspdm_local_buffer, m_libspdm_local_buffer_size);
     assert_memory_equal(spdm_context->transcript.message_a.buffer + arbitrary_size,
                         m_libspdm_local_buffer, m_libspdm_local_buffer_size);
 #endif
+#else
+    skip();
+#endif
 }
 
+/**
+ * Test 33: SPDM 1.2 ALGORITHMS selecting OpaqueDataFmt1, with KEY_EX_CAP, ENCRYPT_CAP, MAC_CAP,
+ * MUT_AUTH_CAP and PSK_CAP set on both sides.
+ * Expected behavior: returns LIBSPDM_STATUS_SUCCESS with OpaqueDataFmt1 negotiated, including when
+ * the Requester also offers MULTI_KEY_CONN.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
+ **/
 static void req_negotiate_algorithms_case33(void **state) {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -2653,11 +2719,19 @@ static void req_negotiate_algorithms_case33(void **state) {
                       sizeof(spdm_negotiate_algorithms_common_struct_table_t) +
                       sizeof(libspdm_algorithms_response_spdm11_t));
 #endif
+#else
+    skip();
+#endif
 }
 
-
+/**
+ * Test 34: SPDM 1.2 ALGORITHMS when the Requester supports no other parameters.
+ * Expected behavior: returns LIBSPDM_STATUS_SUCCESS with no opaque data format negotiated.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
+ **/
 static void req_negotiate_algorithms_case34(void **state)
 {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -2682,6 +2756,9 @@ static void req_negotiate_algorithms_case34(void **state)
     status = libspdm_negotiate_algorithms(spdm_context);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
     assert_int_equal(spdm_context->connection_info.algorithm.other_params_support, 0);
+#else
+    skip();
+#endif
 }
 
 /**
@@ -2846,9 +2923,11 @@ static void req_negotiate_algorithms_case35_multi_key_conn(void **state)
  *  ---------------------------------------------------------------------------------------------------------+
  * | Not set  | 0                          | 0                           | LIBSPDM_STATUS_SUCCESS            |
  *  ----------------------------------------------------------------------------------------------------------
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
  **/
 static void req_negotiate_algorithms_case36_mel_matrix(void **state)
 {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -2957,14 +3036,19 @@ static void req_negotiate_algorithms_case36_mel_matrix(void **state)
     spdm_context->local_context.algorithm.mel_spec = 0;
     status = libspdm_negotiate_algorithms(spdm_context);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+#else
+    skip();
+#endif
 }
 
 /**
  * Test 37: EP_INFO_CAP_SIG is negotiated and req_base_asym_alg in the ALGORITHMS response is valid.
  * Expected behavior: returns with status LIBSPDM_STATUS_SUCCESS.
+ * Skipped if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP is disabled, as the response selects a DHE group.
  **/
 static void req_negotiate_algorithms_case37(void **state)
 {
+#if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -2990,6 +3074,9 @@ static void req_negotiate_algorithms_case37(void **state)
 
     status = libspdm_negotiate_algorithms(spdm_context);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+#else
+    skip();
+#endif
 }
 
 /**
@@ -3015,6 +3102,64 @@ static void req_negotiate_algorithms_case38(void **state)
 
     status = libspdm_negotiate_algorithms(spdm_context);
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_STATE_LOCAL);
+}
+
+/**
+ * Negotiate SPDM 1.3 algorithms with a Responder that sets EP_INFO_CAP_SIG, against an ALGORITHMS
+ * response that selects the given signing and hash algorithms.
+ **/
+static libspdm_return_t req_negotiate_algorithms_ep_info(libspdm_context_t *spdm_context,
+                                                         uint32_t base_asym_sel,
+                                                         uint32_t base_hash_sel)
+{
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_13 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AFTER_CAPABILITIES;
+    spdm_context->local_context.capability.flags = 0;
+    spdm_context->connection_info.capability.flags =
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
+    spdm_context->local_context.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->local_context.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->local_context.algorithm.measurement_spec = 0;
+    spdm_context->local_context.algorithm.measurement_hash_algo = 0;
+    spdm_context->local_context.algorithm.other_params_support = 0;
+    libspdm_reset_message_a(spdm_context);
+
+    m_ep_info_base_asym_sel = base_asym_sel;
+    m_ep_info_base_hash_sel = base_hash_sel;
+    return libspdm_negotiate_algorithms(spdm_context);
+}
+
+/**
+ * Test 39: The Responder sets EP_INFO_CAP_SIG, and a signed ENDPOINT_INFO is a signature over the
+ *          hash of IL1/IL2.
+ * Expected behavior: negotiation fails with LIBSPDM_STATUS_NEGOTIATION_FAIL when ALGORITHMS
+ *                    selects no signing algorithm or no hash algorithm, and succeeds when it
+ *                    selects both.
+ **/
+static void req_negotiate_algorithms_case39(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x2B;
+
+    status = req_negotiate_algorithms_ep_info(spdm_context, 0, m_libspdm_use_hash_algo);
+    assert_int_equal(status, LIBSPDM_STATUS_NEGOTIATION_FAIL);
+
+    status = req_negotiate_algorithms_ep_info(spdm_context, m_libspdm_use_asym_algo, 0);
+    assert_int_equal(status, LIBSPDM_STATUS_NEGOTIATION_FAIL);
+
+    status = req_negotiate_algorithms_ep_info(spdm_context, m_libspdm_use_asym_algo,
+                                              m_libspdm_use_hash_algo);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(spdm_context->connection_info.algorithm.base_asym_algo,
+                     m_libspdm_use_asym_algo);
+    assert_int_equal(spdm_context->connection_info.algorithm.base_hash_algo,
+                     m_libspdm_use_hash_algo);
 }
 
 int libspdm_req_negotiate_algorithms_test(void)
@@ -3058,6 +3203,7 @@ int libspdm_req_negotiate_algorithms_test(void)
         cmocka_unit_test(req_negotiate_algorithms_case36_mel_matrix),
         cmocka_unit_test(req_negotiate_algorithms_case37),
         cmocka_unit_test(req_negotiate_algorithms_case38),
+        cmocka_unit_test(req_negotiate_algorithms_case39),
     };
 
     libspdm_test_context_t test_context = {

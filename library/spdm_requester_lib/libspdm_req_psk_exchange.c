@@ -110,10 +110,10 @@ bool libspdm_verify_psk_exchange_rsp_hmac(libspdm_context_t *spdm_context,
  *                                   On output, the size of data returned in requester_context buffer.
  *                                   It must be 32 bytes at least.
  * @param  responder_context         A buffer to hold the responder context, if not NULL.
- * @param  responder_context_size    On input, the size of requester_context buffer.
- *                                   On output, the size of data returned in requester_context buffer.
+ * @param  responder_context_size    On input, the size of responder_context buffer.
+ *                                   On output, the size of data returned in responder_context buffer.
  *                                   It could be 0 if device does not support context.
- * @param  opaque_data               A buffer to hold the responder opaque data, if not NULL.
+ * @param  responder_opaque_data     A buffer to hold the responder opaque data, if not NULL.
  * @param  responder_opaque_data_size          On input, the size of the opaque data buffer.
  *                                   Responder opaque data should be less than 1024 bytes.
  *                                   On output, the size of the opaque data.
@@ -205,7 +205,7 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
 
     libspdm_reset_message_buffer_via_request_code(spdm_context, NULL, SPDM_PSK_EXCHANGE);
     {
-        /* Double check if algorithm has been provisioned, because ALGORITHM might be skipped.*/
+        /* Double check if algorithm has been provisioned, because NEGOTIATE_ALGORITHMS might be skipped.*/
         if (libspdm_is_capabilities_flag_supported(
                 spdm_context, true, 0,
                 SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP)) {
@@ -397,6 +397,10 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
     hmac_size = libspdm_get_hash_size(
         spdm_context->connection_info.algorithm.base_hash_algo);
 
+    if (spdm_response->opaque_length > SPDM_MAX_OPAQUE_DATA_SIZE) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
     if (spdm_response_size <
         sizeof(spdm_psk_exchange_response_t) +
         spdm_response->context_length + spdm_response->opaque_length +
@@ -407,6 +411,7 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
 
     ptr = (uint8_t *)spdm_response + sizeof(spdm_psk_exchange_response_t) +
           measurement_summary_hash_size + spdm_response->context_length;
+    secured_message_version = 0;
     if (spdm_response->opaque_length != 0) {
         result = libspdm_process_general_opaque_data_check(spdm_context,
                                                            spdm_response->opaque_length, ptr);
@@ -445,11 +450,6 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
 
     ptr += measurement_summary_hash_size;
 
-    if (spdm_response->opaque_length > SPDM_MAX_OPAQUE_DATA_SIZE) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
-
     if (libspdm_is_capabilities_flag_supported(
             spdm_context, true, 0,
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PSK_CAP_RESPONDER)) {
@@ -479,7 +479,7 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
     ptr += spdm_response->context_length;
 
     if ((responder_opaque_data != NULL) && (responder_opaque_data_size != NULL)) {
-        if (spdm_response->opaque_length >= *responder_opaque_data_size) {
+        if (spdm_response->opaque_length > *responder_opaque_data_size) {
             status = LIBSPDM_STATUS_BUFFER_TOO_SMALL;
             goto receive_done;
         }

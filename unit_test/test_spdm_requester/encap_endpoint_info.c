@@ -103,6 +103,7 @@ static void req_encap_endpoint_info_case1(void **state)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -174,6 +175,14 @@ static void req_encap_endpoint_info_case1(void **state)
         spdm_context, session_info, false, m_libspdm_get_endpoint_info_request1.header.param2,
         signature, signature_size);
     assert_true(result);
+
+    free(data);
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    /* The key was parsed with req_base_asym_alg, not base_asym_algo, so free it explicitly. */
+    libspdm_req_asym_free(spdm_context->connection_info.algorithm.req_base_asym_alg,
+                          spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+    spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key = NULL;
+#endif
 }
 
 /**
@@ -216,6 +225,7 @@ static void req_encap_endpoint_info_case2(void **state)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[1] = data_size;
@@ -286,6 +296,14 @@ static void req_encap_endpoint_info_case2(void **state)
         spdm_context, session_info, false, m_libspdm_get_endpoint_info_request2.header.param2,
         signature, signature_size);
     assert_true(result);
+
+    free(data);
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    /* The key was parsed with req_base_asym_alg, not base_asym_algo, so free it explicitly. */
+    libspdm_req_asym_free(spdm_context->connection_info.algorithm.req_base_asym_alg,
+                          spdm_context->connection_info.peer_used_cert_chain[1].leaf_cert_public_key);
+    spdm_context->connection_info.peer_used_cert_chain[1].leaf_cert_public_key = NULL;
+#endif
 }
 
 /**
@@ -326,6 +344,7 @@ static void req_encap_endpoint_info_case3(void **state)
     spdm_context->connection_info.algorithm.req_base_asym_alg = m_libspdm_use_req_asym_algo;
 
     if (!libspdm_read_requester_public_key(m_libspdm_use_req_asym_algo, &data, &data_size)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_public_key_provision = data;
@@ -381,6 +400,8 @@ static void req_encap_endpoint_info_case3(void **state)
         spdm_context, session_info, false, m_libspdm_get_endpoint_info_request3.header.param2,
         signature, signature_size);
     assert_true(result);
+
+    free(data);
 }
 
 /**
@@ -472,6 +493,7 @@ static void req_encap_endpoint_info_case5(void **state)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -552,6 +574,14 @@ static void req_encap_endpoint_info_case5(void **state)
         spdm_context, session_info, false, m_libspdm_get_endpoint_info_request1.header.param2,
         signature, signature_size);
     assert_true(result);
+
+    free(data);
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    /* The key was parsed with req_base_asym_alg, not base_asym_algo, so free it explicitly. */
+    libspdm_req_asym_free(spdm_context->connection_info.algorithm.req_base_asym_alg,
+                          spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
+    spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key = NULL;
+#endif
 }
 
 int libspdm_req_encap_endpoint_info_test(void)

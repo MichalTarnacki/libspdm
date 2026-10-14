@@ -467,6 +467,7 @@ static void rsp_encapsulated_request_case1(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -499,6 +500,8 @@ static void rsp_encapsulated_request_case1(void **State)
     assert_int_equal(spdm_get_digests_request->header.request_response_code, SPDM_GET_DIGESTS);
     assert_int_equal(spdm_get_digests_request->header.param1, 0);
     assert_int_equal(spdm_get_digests_request->header.param2, 0);
+
+    free(data);
 }
 
 /**
@@ -535,6 +538,7 @@ static void rsp_encapsulated_request_case2(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -576,6 +580,8 @@ static void rsp_encapsulated_request_case2(void **State)
                           sizeof(spdm_get_certificate_request_t);
 
     assert_int_equal(spdm_get_certificate_request->length, length);
+
+    free(data);
 }
 #endif /* (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT) */
 
@@ -716,6 +722,7 @@ static void rsp_encapsulated_request_case5(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -749,6 +756,8 @@ static void rsp_encapsulated_request_case5(void **State)
     assert_int_equal(challenge_request->header.request_response_code, SPDM_CHALLENGE);
     assert_int_equal(challenge_request->header.param1, 4);
     assert_int_equal(challenge_request->header.param2, 0);
+
+    free(data);
 }
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_CHALLENGE_SUPPORT) */
 
@@ -792,6 +801,7 @@ static void rsp_encapsulated_request_case6(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -937,6 +947,7 @@ static void rsp_encapsulated_request_case8(void **State)
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -958,11 +969,6 @@ static void rsp_encapsulated_request_case8(void **State)
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
-    libspdm_get_leaf_cert_public_key_from_cert_chain(
-        spdm_context->connection_info.algorithm.base_hash_algo,
-        spdm_context->connection_info.algorithm.base_asym_algo,
-        data, data_size,
-        &spdm_context->connection_info.peer_used_cert_chain[0].leaf_cert_public_key);
 #endif
 
     session_id = 0xFFFFFFFF;
@@ -1252,6 +1258,7 @@ static void rsp_encapsulated_response_ack_case1(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -1339,6 +1346,7 @@ static void rsp_encapsulated_response_ack_case2(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -1358,6 +1366,7 @@ static void rsp_encapsulated_response_ack_case2(void **State)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &libspdm_local_certificate_chain,
             &libspdm_local_certificate_chain_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -1426,6 +1435,7 @@ static void rsp_encapsulated_response_ack_case3(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -1592,6 +1602,8 @@ static void rsp_encapsulated_response_ack_case6(void **State)
     assert_int_equal(spdm_response_requester->header.request_response_code, SPDM_ERROR);
     assert_int_equal(spdm_response_requester->header.param1, SPDM_ERROR_CODE_REQUEST_RESYNCH);
     assert_int_equal(spdm_response_requester->header.param2, 0);
+
+    free(data);
 }
 
 #if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT)
@@ -1637,6 +1649,7 @@ static void rsp_encapsulated_response_ack_case7(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -1658,6 +1671,7 @@ static void rsp_encapsulated_response_ack_case7(void **State)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &libspdm_local_certificate_chain,
             &libspdm_local_certificate_chain_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -1737,6 +1751,7 @@ static void rsp_encapsulated_response_ack_case8(void **State)
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size,
                                                          NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -2043,6 +2058,7 @@ static void rsp_encapsulated_response_ack_case10(void **State)
     if (!libspdm_read_requester_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_req_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -2061,6 +2077,7 @@ static void rsp_encapsulated_response_ack_case10(void **State)
         spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash);
     spdm_context->connection_info.peer_used_cert_chain[0].buffer_hash_size =
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -2120,6 +2137,9 @@ static void rsp_encapsulated_response_ack_case10(void **State)
     assert_int_equal(spdm_context->response_state, LIBSPDM_RESPONSE_STATE_NORMAL);
 
     free(data);
+#if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT)
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
+#endif
 }
 #endif /* (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_CHALLENGE_SUPPORT) */
 
@@ -2232,9 +2252,11 @@ static void rsp_encapsulated_response_ack_case11(void **State)
  * Test 13 (GET_ENCAPSULATED_REQUEST) in two secure sessions, with both flows open at once.
  * Expected behavior: an encapsulated flow in one session does not prevent a flow from being
  * started in another session, and each session tracks its own flow.
+ * Skipped if LIBSPDM_MAX_SESSION_COUNT is less than 2, as the case opens two sessions.
  **/
 static void rsp_encapsulated_request_case13(void **State)
 {
+#if (LIBSPDM_MAX_SESSION_COUNT) >= 2
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     spdm_encapsulated_request_response_t *spdm_response_requester;
@@ -2323,6 +2345,9 @@ static void rsp_encapsulated_request_case13(void **State)
     session_info_1->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_NONE;
     session_info_2->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_NONE;
     spdm_context->last_spdm_request_session_id_valid = false;
+#else
+    skip();
+#endif
 }
 #endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
 
@@ -2372,13 +2397,13 @@ static void rsp_encapsulated_request_case14(void **State)
     /* The state that KEY_EXCHANGE_RSP with MutAuthRequested bit 1 leaves behind. */
     session_info->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH;
     session_info->encap_context.request_id = 0;
-    session_info->encap_context.last_encap_request_size = 0;
+    session_info->encap_context.has_last_encap_request = false;
 
     /* The message is sent outside of a session, as the handshake is in the clear. The non-session
      * context is cleared so that it can be shown to be untouched below. */
     spdm_context->last_spdm_request_session_id_valid = false;
     spdm_context->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_NONE;
-    spdm_context->encap_context.last_encap_request_size = 0;
+    spdm_context->encap_context.has_last_encap_request = false;
 
     response_size = sizeof(response);
     status = libspdm_get_response_encapsulated_request(spdm_context,
@@ -2395,9 +2420,9 @@ static void rsp_encapsulated_request_case14(void **State)
 
     /* The flow advanced in the session's context, not the non-session one. */
     assert_int_equal(session_info->encap_context.flow_type, LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH);
-    assert_int_not_equal(session_info->encap_context.last_encap_request_size, 0);
+    assert_true(session_info->encap_context.has_last_encap_request);
     assert_int_equal(spdm_context->encap_context.flow_type, LIBSPDM_ENCAP_FLOW_NONE);
-    assert_int_equal(spdm_context->encap_context.last_encap_request_size, 0);
+    assert_false(spdm_context->encap_context.has_last_encap_request);
 
     /* Without handshake in the clear the same message belongs to the non-session context, so a
      * pending session flow must not capture it. */
@@ -2462,6 +2487,7 @@ static void rsp_encapsulated_response_ack_case12(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -2573,6 +2599,7 @@ static void rsp_encapsulated_response_ack_case13(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -2676,6 +2703,7 @@ static void rsp_encapsulated_response_ack_case14(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -2771,6 +2799,7 @@ static void rsp_encapsulated_response_ack_case15(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
 
@@ -2885,7 +2914,7 @@ static void rsp_encapsulated_response_ack_case16(void **State)
     spdm_context->encap_context.response_not_ready_data.rd_exponent = 1;
     spdm_context->encap_context.response_not_ready_data.rd_tm = 1;
     spdm_context->encap_context.last_encap_request_header.request_response_code = SPDM_GET_DIGESTS;
-    spdm_context->encap_context.last_encap_request_size = sizeof(spdm_message_header_t);
+    spdm_context->encap_context.has_last_encap_request = true;
     spdm_context->encap_context.request_id = 3;
 
     response_size = sizeof(response);
@@ -3101,7 +3130,7 @@ static void rsp_encapsulated_request_case16(void **State)
                         : &spdm_context->encap_context;
         encap_context->flow_type = cases[index].flow_type;
         encap_context->request_id = 0;
-        encap_context->last_encap_request_size = 0;
+        encap_context->has_last_encap_request = false;
 
         m_legality_request_code = cases[index].request_code;
 
@@ -3161,7 +3190,7 @@ static void rsp_encapsulated_request_case17(void **State)
 
     /* The state that CHALLENGE_AUTH with the basic mutual authentication bit leaves behind. */
     spdm_context->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_BASIC_MUT_AUTH;
-    spdm_context->encap_context.last_encap_request_size = 0;
+    spdm_context->encap_context.has_last_encap_request = false;
 
     response_size = sizeof(response);
     status = libspdm_get_response_encapsulated_request(spdm_context,
@@ -3200,7 +3229,7 @@ static void deliver_encap_error(libspdm_context_t *spdm_context, uint8_t last_re
     spdm_context->connection_info.capability.flags |= SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCAP_CAP;
     spdm_context->local_context.capability.flags |= SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ENCAP_CAP;
     spdm_context->encap_context.last_encap_request_header.request_response_code = last_request_code;
-    spdm_context->encap_context.last_encap_request_size = sizeof(spdm_message_header_t);
+    spdm_context->encap_context.has_last_encap_request = true;
 #if LIBSPDM_RESPOND_IF_READY_SUPPORT
     spdm_context->encap_context.response_not_ready = false;
 #endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
@@ -3428,7 +3457,7 @@ static void rsp_encapsulated_request_case18(void **State)
     spdm_context->last_spdm_request_session_id_valid = false;
     spdm_context->latest_session_id = INVALID_SESSION_ID;
     spdm_context->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_NONE;
-    spdm_context->encap_context.last_encap_request_size = 0;
+    spdm_context->encap_context.has_last_encap_request = false;
 #if LIBSPDM_RESPOND_IF_READY_SUPPORT
     spdm_context->encap_context.response_not_ready = false;
 #endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
@@ -3479,7 +3508,7 @@ static void rsp_encapsulated_request_case19(void **State)
     spdm_context->encap_context.response_not_ready = true;
     spdm_context->encap_context.response_not_ready_flow_type = LIBSPDM_ENCAP_FLOW_GENERAL;
     /* Nothing was retained, so there is no request to reissue. */
-    spdm_context->encap_context.last_encap_request_size = 0;
+    spdm_context->encap_context.has_last_encap_request = false;
     libspdm_register_encap_flow_handler(spdm_context, encap_flow_handler);
 
     response_size = sizeof(response);
@@ -3526,7 +3555,7 @@ static void rsp_encapsulated_request_case20(void **State)
     spdm_context->last_spdm_request_session_id_valid = false;
     spdm_context->latest_session_id = INVALID_SESSION_ID;
     spdm_context->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_NONE;
-    spdm_context->encap_context.last_encap_request_size = 0;
+    spdm_context->encap_context.has_last_encap_request = false;
 #if LIBSPDM_RESPOND_IF_READY_SUPPORT
     spdm_context->encap_context.response_not_ready = false;
 #endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
@@ -3621,7 +3650,7 @@ static void rsp_encapsulated_request_case21(void **State)
     /* The outstanding request is recorded, so the EVENT_ACK can be attributed to it. */
     assert_int_equal(session_info->encap_context.last_encap_request_header.request_response_code,
                      SPDM_SEND_EVENT);
-    assert_int_not_equal(session_info->encap_context.last_encap_request_size, 0);
+    assert_true(session_info->encap_context.has_last_encap_request);
 
     /* The Requester delivers the EVENT_ACK. */
     spdm_request = (void *)temp_buf;
@@ -3717,6 +3746,7 @@ static bool provision_requester_root_cert(libspdm_context_t *spdm_context, void 
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, cert_chain,
                                                          cert_chain_size, &hash, &hash_size)) {
+        assert_true(false);
         return false;
     }
     if (!libspdm_x509_get_cert_from_cert_chain(
@@ -4093,6 +4123,7 @@ static void rsp_encapsulated_request_case23(void **State)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
@@ -4148,6 +4179,234 @@ static void rsp_encapsulated_request_case23(void **State)
     free(data);
 }
 #endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
+
+/**
+ * Test 33 (DELIVER_ENCAPSULATED_RESPONSE) in the optimized encapsulated flow, where
+ * KEY_EXCHANGE_RSP set MutAuthRequested bit 2 and the Integrator ends the flow as soon as the
+ * Requester answers the implicit GET_DIGESTS, as it can when it already holds the Requester's
+ * certificate chain.
+ * Expected behavior: the flow has moved past its first message, so the mutual authentication
+ * enforcement accepts FINISH rather than insisting on DELIVER_ENCAPSULATED_RESPONSE.
+ * Skipped unless LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT and LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
+ * are enabled.
+ **/
+static void rsp_encapsulated_response_ack_case33(void **State)
+{
+#if (LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT) && (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP)
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    spdm_deliver_encapsulated_response_request_t *deliver;
+    spdm_digest_response_t *digests;
+    spdm_message_header_t *ack;
+    uint8_t temp_buf[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    uint8_t *digest;
+    size_t deliver_size;
+    size_t response_size;
+    uint32_t session_id;
+    uint8_t error_code;
+    void *data;
+    size_t data_size;
+
+    spdm_test_context = *State;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x92;
+    m_case_id = spdm_test_context->case_id;
+
+    set_standard_state(spdm_context);
+    spdm_context->connection_info.capability.flags |= SPDM_GET_CAPABILITIES_REQUEST_FLAGS_CERT_CAP;
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, NULL, NULL)) {
+        assert_true(false);
+        return;
+    }
+    spdm_context->local_context.local_cert_chain_provision_size[0] = data_size;
+    spdm_context->local_context.local_cert_chain_provision[0] = data;
+
+    session_id = 0xFFFFFFFF;
+    spdm_context->latest_session_id = session_id;
+    spdm_context->last_spdm_request_session_id_valid = true;
+    spdm_context->last_spdm_request_session_id = session_id;
+    session_info = &spdm_context->session_info[0];
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
+    libspdm_secured_message_set_session_state(session_info->secured_message_context,
+                                              LIBSPDM_SESSION_STATE_HANDSHAKING);
+    session_info->mut_auth_requested =
+        SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS;
+    /* This is the state init_encap_state leaves behind for bit 2. */
+    session_info->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH;
+    session_info->encap_context.request_id = 0;
+    session_info->encap_context.has_last_encap_request = false;
+    session_info->encap_context.last_encap_request_header.request_response_code = SPDM_GET_DIGESTS;
+    libspdm_reset_message_b(spdm_context);
+    libspdm_reset_message_mut_b(spdm_context);
+
+    deliver = (void *)temp_buf;
+    libspdm_copy_mem(deliver, sizeof(temp_buf),
+                     &m_libspdm_m_deliver_encapsulated_response_request_t1,
+                     m_libspdm_m_deliver_encapsulated_response_request_t1_size);
+    /* Request ID 0 is the only legal value, as none was ever handed out. */
+    deliver->header.param1 = 0;
+
+    digests = (void *)(temp_buf + sizeof(spdm_deliver_encapsulated_response_request_t));
+    digests->header.spdm_version = SPDM_MESSAGE_VERSION_11;
+    digests->header.request_response_code = SPDM_DIGESTS;
+    digests->header.param1 = 0;
+    digests->header.param2 = (0x01 << 0);
+    digest = (void *)(digests + 1);
+    libspdm_hash_all(m_libspdm_use_hash_algo, m_libspdm_local_certificate_chain,
+                     sizeof(m_libspdm_local_certificate_chain), &digest[0]);
+
+    deliver_size = sizeof(spdm_deliver_encapsulated_response_request_t) +
+                   sizeof(spdm_digest_response_t) +
+                   libspdm_get_hash_size(m_libspdm_use_hash_algo);
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_encapsulated_response_ack(spdm_context, deliver_size,
+                                                            temp_buf, &response_size,
+                                                            response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    ack = (void *)response;
+    assert_int_equal(ack->request_response_code, SPDM_ENCAPSULATED_RESPONSE_ACK);
+    assert_int_equal(ack->param2,
+                     SPDM_ENCAPSULATED_RESPONSE_ACK_RESPONSE_PAYLOAD_TYPE_REQ_SLOT_NUMBER);
+    assert_int_equal(session_info->encap_context.flow_type, LIBSPDM_ENCAP_FLOW_NONE);
+
+    /* The flow has ended, so the Requester proceeds to FINISH. */
+    error_code = 0;
+    assert_false(libspdm_is_request_unexpected_for_mut_auth_encap(spdm_context, &session_id,
+                                                                  SPDM_FINISH, &error_code));
+
+    spdm_context->last_spdm_request_session_id_valid = false;
+    free(data);
+#else
+    skip();
+#endif
+}
+
+/**
+ * Test 34 (DELIVER_ENCAPSULATED_RESPONSE, then GET_ENCAPSULATED_REQUEST) in the optimized
+ * encapsulated flow, where the Requester answers the implicit GET_DIGESTS with an encapsulated
+ * ERROR(ResponseNotReady).
+ * Expected behavior: the mutual authentication enforcement accepts the GET_ENCAPSULATED_REQUEST
+ * with which the Requester returns to the flow, and the Responder reissues the implicit
+ * GET_DIGESTS with RESPOND_IF_READY under Request ID 0, without consulting the Integrator's
+ * handler.
+ * Skipped unless LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT, LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP and
+ * LIBSPDM_RESPOND_IF_READY_SUPPORT are enabled.
+ **/
+static void rsp_encapsulated_response_ack_case34(void **State)
+{
+#if (LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT) && (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && \
+    (LIBSPDM_RESPOND_IF_READY_SUPPORT)
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    libspdm_session_info_t *session_info;
+    spdm_deliver_encapsulated_response_request_t *deliver;
+    spdm_error_response_data_response_not_ready_t *not_ready;
+    spdm_encapsulated_request_response_t *encap_request_response;
+    const spdm_response_if_ready_request_t *respond_if_ready;
+    uint8_t temp_buf[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    size_t response_size;
+    uint32_t session_id;
+    uint8_t error_code;
+
+    spdm_test_context = *State;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x92;
+    m_case_id = spdm_test_context->case_id;
+    m_handler_calls = 0;
+
+    set_standard_state(spdm_context);
+    spdm_context->connection_info.capability.flags |= SPDM_GET_CAPABILITIES_REQUEST_FLAGS_CERT_CAP;
+
+    session_id = 0xFFFFFFFF;
+    spdm_context->latest_session_id = session_id;
+    spdm_context->last_spdm_request_session_id_valid = true;
+    spdm_context->last_spdm_request_session_id = session_id;
+    session_info = &spdm_context->session_info[0];
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
+    libspdm_secured_message_set_session_state(session_info->secured_message_context,
+                                              LIBSPDM_SESSION_STATE_HANDSHAKING);
+    session_info->mut_auth_requested =
+        SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED_WITH_GET_DIGESTS;
+    /* This is the state init_encap_state leaves behind for bit 2. */
+    session_info->encap_context.flow_type = LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH;
+    session_info->encap_context.request_id = 0;
+    session_info->encap_context.has_last_encap_request = false;
+    session_info->encap_context.last_encap_request_header.request_response_code = SPDM_GET_DIGESTS;
+    session_info->encap_context.response_not_ready = false;
+
+    /* The Requester defers the implicit GET_DIGESTS. */
+    deliver = (void *)temp_buf;
+    deliver->header.spdm_version = SPDM_MESSAGE_VERSION_11;
+    deliver->header.request_response_code = SPDM_DELIVER_ENCAPSULATED_RESPONSE;
+    deliver->header.param1 = 0;
+    deliver->header.param2 = 0;
+    not_ready = (void *)(deliver + 1);
+    not_ready->header.spdm_version = SPDM_MESSAGE_VERSION_11;
+    not_ready->header.request_response_code = SPDM_ERROR;
+    not_ready->header.param1 = SPDM_ERROR_CODE_RESPONSE_NOT_READY;
+    not_ready->header.param2 = 0;
+    not_ready->extend_error_data.rd_exponent = 1;
+    not_ready->extend_error_data.request_code = SPDM_GET_DIGESTS;
+    not_ready->extend_error_data.token = 0x5A;
+    not_ready->extend_error_data.rd_tm = 2;
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_encapsulated_response_ack(
+        spdm_context, sizeof(*deliver) + sizeof(*not_ready), temp_buf, &response_size, response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_true(session_info->encap_context.response_not_ready);
+    /* Answering the implicit GET_DIGESTS counts as issuing it. */
+    assert_true(session_info->encap_context.has_last_encap_request);
+
+    /* The Requester returns to the flow. */
+    error_code = 0;
+    assert_false(libspdm_is_request_unexpected_for_mut_auth_encap(
+                     spdm_context, &session_id, SPDM_GET_ENCAPSULATED_REQUEST, &error_code));
+
+    /* The handler must not be consulted for the reissue, so switch to a case it does not
+     * recognize. */
+    spdm_test_context->case_id = 0x97;
+    m_case_id = spdm_test_context->case_id;
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_encapsulated_request(spdm_context,
+                                                       m_libspdm_encapsulated_request_t1_size,
+                                                       &m_libspdm_encapsulated_request_t1,
+                                                       &response_size, response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    encap_request_response = (void *)response;
+    assert_int_equal(encap_request_response->header.request_response_code,
+                     SPDM_ENCAPSULATED_REQUEST);
+    assert_int_equal(response_size,
+                     sizeof(spdm_encapsulated_request_response_t) +
+                     sizeof(spdm_response_if_ready_request_t));
+    /* The reissued request keeps the Request ID that the implicit request carries. */
+    assert_int_equal(encap_request_response->header.param1, 0);
+
+    respond_if_ready = (const void *)(encap_request_response + 1);
+    assert_int_equal(respond_if_ready->header.request_response_code, SPDM_RESPOND_IF_READY);
+    assert_int_equal(respond_if_ready->header.param1, SPDM_GET_DIGESTS);
+    assert_int_equal(respond_if_ready->header.param2, 0x5A);
+    assert_int_equal(session_info->encap_context.flow_type, LIBSPDM_ENCAP_FLOW_SESS_MUT_AUTH);
+    /* The handler was told of the ResponseNotReady, and not consulted again. */
+    assert_int_equal(m_handler_calls, 1);
+
+    spdm_context->last_spdm_request_session_id_valid = false;
+#else
+    skip();
+#endif
+}
 
 int libspdm_rsp_encapsulated_request_test(void)
 {
@@ -4290,6 +4549,10 @@ int libspdm_rsp_encapsulated_request_test(void)
         /* The encapsulated DIGESTS transcript window of a session flow */
         cmocka_unit_test(rsp_encapsulated_request_case23),
 #endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
+        /* Optimized flow: FINISH is accepted once the implicit GET_DIGESTS is answered */
+        cmocka_unit_test(rsp_encapsulated_response_ack_case33),
+        /* Optimized flow: the implicit GET_DIGESTS is reissued after ResponseNotReady */
+        cmocka_unit_test(rsp_encapsulated_response_ack_case34),
     };
 
     libspdm_test_context_t test_context = {

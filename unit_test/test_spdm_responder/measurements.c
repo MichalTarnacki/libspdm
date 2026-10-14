@@ -463,6 +463,7 @@ static void rsp_measurements_case7(void **state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -497,6 +498,8 @@ static void rsp_measurements_case7(void **state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**
@@ -1031,6 +1034,7 @@ static void rsp_measurements_case18(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     measurement_sig_size = SPDM_NONCE_SIZE + sizeof(uint16_t) + 0 +
@@ -1454,6 +1458,7 @@ static void rsp_measurements_case26(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     measurement_sig_size = SPDM_NONCE_SIZE + sizeof(uint16_t) + 0 +
@@ -1533,6 +1538,7 @@ static void rsp_measurements_case27(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     measurement_sig_size = SPDM_NONCE_SIZE + sizeof(uint16_t) +
@@ -1654,6 +1660,7 @@ static void rsp_measurements_case28(void **state)
     libspdm_secret_lib_meas_opaque_data_size = 0x20;
 
     if (!libspdm_read_responder_public_key(m_libspdm_use_asym_algo, &data, &data_size)) {
+        assert_true(false);
         return;
     }
     spdm_context->local_context.local_public_key_provision = data;
@@ -1768,6 +1775,7 @@ static void rsp_measurements_case29(void** state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -1802,6 +1810,8 @@ static void rsp_measurements_case29(void** state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**
@@ -1870,6 +1880,7 @@ static void rsp_measurements_case30(void** state)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &data, &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
@@ -1886,6 +1897,7 @@ static void rsp_measurements_case30(void** state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -1922,6 +1934,8 @@ static void rsp_measurements_case30(void** state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**
@@ -1990,6 +2004,7 @@ static void rsp_measurements_case31(void** state)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &data, &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
@@ -2006,6 +2021,7 @@ static void rsp_measurements_case31(void** state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -2042,6 +2058,8 @@ static void rsp_measurements_case31(void** state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**
@@ -2110,6 +2128,7 @@ static void rsp_measurements_case32(void** state)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &data, &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
@@ -2126,6 +2145,7 @@ static void rsp_measurements_case32(void** state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -2167,6 +2187,8 @@ static void rsp_measurements_case32(void** state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**
@@ -2235,6 +2257,7 @@ static void rsp_measurements_case33(void** state)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &data, &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
@@ -2251,6 +2274,7 @@ static void rsp_measurements_case33(void** state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -2292,6 +2316,8 @@ static void rsp_measurements_case33(void** state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 
@@ -2361,6 +2387,7 @@ static void rsp_measurements_case34(void** state)
             m_libspdm_use_hash_algo, m_libspdm_use_asym_algo,
             &data, &data_size,
             &hash, &hash_size)) {
+        assert_true(false);
         return;
     }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
@@ -2377,6 +2404,7 @@ static void rsp_measurements_case34(void** state)
         libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         (uint16_t)m_libspdm_use_asym_algo;
+    libspdm_free_peer_leaf_cert_public_key(spdm_context, 0);
     libspdm_get_leaf_cert_public_key_from_cert_chain(
         spdm_context->connection_info.algorithm.base_hash_algo,
         spdm_context->connection_info.algorithm.req_base_asym_alg,
@@ -2417,6 +2445,8 @@ static void rsp_measurements_case34(void** state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
+
+    free(data);
 }
 
 /**
@@ -2523,6 +2553,7 @@ static void rsp_measurements_case36(void **state)
     if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
                                                          m_libspdm_use_asym_algo, &data,
                                                          &data_size, NULL, NULL)) {
+        assert_true(false);
         return;
     }
     for (int i = 0; i < SPDM_MAX_SLOT_COUNT; i++) {
@@ -2573,6 +2604,68 @@ static void rsp_measurements_case36(void **state)
 #else
     assert_null(spdm_context->transcript.digest_context_l1l2);
 #endif
+
+    free(data);
+}
+
+static size_t m_meas_log_reset_count;
+static bool m_meas_log_reset_in_session;
+
+static void meas_log_reset_callback(void *spdm_context, const uint32_t *session_id)
+{
+    m_meas_log_reset_count++;
+    m_meas_log_reset_in_session = (session_id != NULL);
+}
+
+/**
+ * Test 37: A GET_MEASUREMENTS request outside a session, whose SPDM version differs from the
+ * connection's, with a measurement log reset callback registered.
+ * Expected Behavior: the Responder returns ERROR(VersionMismatch) and resets L1/L2, which calls
+ * the callback once, without a session ID.
+ **/
+static void rsp_measurements_case37(void **state)
+{
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t response_size;
+    uint8_t response[LIBSPDM_MAX_SPDM_MSG_SIZE];
+    spdm_get_measurements_request_t spdm_request;
+    spdm_error_response_t *spdm_response;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 37;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_12 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AUTHENTICATED;
+    spdm_context->last_spdm_request_session_id_valid = false;
+
+    m_meas_log_reset_count = 0;
+    m_meas_log_reset_in_session = true;
+    status = libspdm_register_meas_log_reset_callback(spdm_context, meas_log_reset_callback);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+
+    libspdm_zero_mem(&spdm_request, sizeof(spdm_request));
+    /* {ERROR} The request's SPDM version is not the connection's. */
+    spdm_request.header.spdm_version = SPDM_MESSAGE_VERSION_11;
+    spdm_request.header.request_response_code = SPDM_GET_MEASUREMENTS;
+    spdm_request.header.param1 = 0;
+    spdm_request.header.param2 =
+        SPDM_GET_MEASUREMENTS_REQUEST_MEASUREMENT_OPERATION_TOTAL_NUMBER_OF_MEASUREMENTS;
+
+    response_size = sizeof(response);
+    status = libspdm_get_response_measurements(spdm_context, sizeof(spdm_message_header_t),
+                                               &spdm_request, &response_size, response);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(response_size, sizeof(spdm_error_response_t));
+    spdm_response = (void *)response;
+    assert_int_equal(spdm_response->header.request_response_code, SPDM_ERROR);
+    assert_int_equal(spdm_response->header.param1, SPDM_ERROR_CODE_VERSION_MISMATCH);
+    assert_int_equal(m_meas_log_reset_count, 1);
+    assert_false(m_meas_log_reset_in_session);
+
+    libspdm_register_meas_log_reset_callback(spdm_context, NULL);
 }
 
 int libspdm_rsp_measurements_test(void)
@@ -2653,6 +2746,8 @@ int libspdm_rsp_measurements_test(void)
         cmocka_unit_test(rsp_measurements_case35),
         /* The key usage bit mask is not set, failed Case*/
         cmocka_unit_test(rsp_measurements_case36),
+        /* A registered measurement log reset callback is called when L1/L2 is reset. */
+        cmocka_unit_test(rsp_measurements_case37),
     };
 
     libspdm_test_context_t test_context = {

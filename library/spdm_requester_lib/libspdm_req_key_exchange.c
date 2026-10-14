@@ -46,7 +46,7 @@ bool libspdm_verify_key_exchange_rsp_hmac(libspdm_context_t *spdm_context,
     bool result;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     uint8_t slot_id;
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
@@ -120,15 +120,17 @@ bool libspdm_verify_key_exchange_rsp_signature(
     void *context;
     uint8_t slot_id;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-    uint8_t *cert_chain_buffer;
+    const uint8_t *cert_chain_buffer;
     size_t cert_chain_buffer_size;
     uint8_t *th_curr_data;
     size_t th_curr_data_size;
     libspdm_th_managed_buffer_t th_curr;
+#if LIBSPDM_CERT_PARSE_SUPPORT
     const uint8_t *cert_chain_data;
     size_t cert_chain_data_size;
     const uint8_t *cert_buffer;
     size_t cert_buffer_size;
+#endif /* LIBSPDM_CERT_PARSE_SUPPORT */
 #endif
 #if !(LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) || (LIBSPDM_DEBUG_PRINT_ENABLE)
     size_t hash_size;
@@ -202,7 +204,7 @@ bool libspdm_verify_key_exchange_rsp_signature(
             return false;
         }
     } else {
-#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+#if (LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT) && (LIBSPDM_CERT_PARSE_SUPPORT)
         /* Get leaf cert from cert chain*/
         libspdm_get_peer_cert_chain_data(
             spdm_context, slot_id, (const void **)&cert_chain_data, &cert_chain_data_size);
@@ -225,6 +227,8 @@ bool libspdm_verify_key_exchange_rsp_signature(
         if (!result) {
             return false;
         }
+#elif LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+        return false;
 #else
         context = spdm_context->connection_info.peer_used_cert_chain[slot_id].leaf_cert_public_key;
         LIBSPDM_ASSERT(context != NULL);
@@ -290,9 +294,9 @@ bool libspdm_verify_key_exchange_rsp_signature(
  * @param  heartbeat_period       Heartbeat_period from the KEY_EXCHANGE_RSP response.
  * @param  req_slot_id_param      req_slot_id_param from the KEY_EXCHANGE_RSP response.
  * @param  measurement_hash       Measurement_hash from the KEY_EXCHANGE_RSP response.
- * @param  requester_nonce_in     If not NULL, a buffer that holds the requester nonce (32 bytes)
- * @param  requester_nonce        If not NULL, a buffer to hold the requester nonce (32 bytes).
- * @param  responder_nonce        If not NULL, a buffer to hold the responder nonce (32 bytes).
+ * @param  requester_random_in    If not NULL, a buffer that holds the requester random data (32 bytes)
+ * @param  requester_random       If not NULL, a buffer to hold the requester random data (32 bytes).
+ * @param  responder_random       If not NULL, a buffer to hold the responder random data (32 bytes).
  **/
 static libspdm_return_t libspdm_try_send_receive_key_exchange(
     libspdm_context_t *spdm_context, uint8_t measurement_hash_type,
@@ -725,6 +729,7 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
+    secured_message_version = 0;
     if (opaque_length != 0) {
         result = libspdm_process_general_opaque_data_check(spdm_context, opaque_length, ptr);
         if (!result) {
@@ -748,7 +753,7 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
     }
 
     if ((responder_opaque_data != NULL) && (responder_opaque_data_size != NULL)) {
-        if (opaque_length >= *responder_opaque_data_size) {
+        if (opaque_length > *responder_opaque_data_size) {
             status = LIBSPDM_STATUS_BUFFER_TOO_SMALL;
             goto receive_done;
         }
